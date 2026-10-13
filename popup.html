@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DishFind</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main class="recipe-card" aria-labelledby="dish-name">
+    <div class="topline">
+      <span class="brand-mark" aria-hidden="true">d.</span>
+      <span class="brand-name">dishfind</span>
+      <button class="icon-button like-button" id="like-button" aria-label="Like this recipe" aria-pressed="false" title="Like recipe">♡</button>
+    </div>
+
+    <div class="hero-wrap">
+      <img id="dish-image" class="hero-image" src="assets/pasta.svg" alt="Illustration of a bowl of tomato pasta">
+      <span class="image-tag">RECIPE IDEA</span>
+    </div>
+
+    <section class="recipe-content">
+      <p class="eyebrow" id="recipe-category">QUICK &amp; COMFORTING</p>
+      <h1 id="dish-name">Creamy Tomato Pasta</h1>
+      <p class="description" id="dish-description">A cozy tomato pasta with garlic, basil, and a silky sauce.</p>
+
+      <div class="meta-row" aria-label="Recipe details">
+        <span><span aria-hidden="true">◷</span> <strong id="cook-time">25 min</strong></span>
+        <span><span aria-hidden="true">♧</span> <strong id="servings">2 servings</strong></span>
+        <span class="difficulty" id="difficulty">Easy</span>
+      </div>
+
+      <div class="section-heading">
+        <h2>What you'll need</h2>
+        <span class="small-note">INGREDIENTS</span>
+      </div>
+      <ul id="ingredients" class="ingredient-list"></ul>
+
+      <div class="section-heading steps-heading">
+        <h2>Make it</h2>
+        <span class="small-note">IN A FEW STEPS</span>
+      </div>
+      <ol id="instructions" class="steps-list"></ol>
+
+      <a id="youtube-link" class="video-link" href="https://www.youtube.com/results?search_query=creamy+tomato+pasta+recipe" target="_blank" rel="noreferrer">
+        <span class="play-icon" aria-hidden="true">▶</span>
+        <span><strong>Watch a recipe video</strong><small>YouTube · cooking walkthroughs</small></span>
+        <span class="link-arrow" aria-hidden="true">↗</span>
+      </a>
+
+      <div class="references-block">
+        <h2>References</h2>
+        <div id="references" class="reference-list"></div>
+      </div>
+      <p class="footer-note">A starting point for your next meal ✳</p>
+    </section>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>
