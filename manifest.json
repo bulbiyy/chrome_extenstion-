@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "DishFind",
+  "version": "1.0.0",
+  "description": "Discover recipes for dishes you find online.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "DishFind"
+  }
+}

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 320" role="img" aria-label="Illustration of tomato pasta in a bowl">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f2dfc2"/><stop offset="1" stop-color="#e5c8a4"/></linearGradient>
+    <linearGradient id="bowl" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fffaf0"/><stop offset="1" stop-color="#d8d0bd"/></linearGradient>
+    <radialGradient id="sauce"><stop stop-color="#e97846"/><stop offset="1" stop-color="#b93c25"/></radialGradient>
+  </defs>
+  <rect width="720" height="320" fill="url(#bg)"/>
+  <circle cx="80" cy="55" r="65" fill="#f9ebd6" opacity=".7"/><circle cx="665" cy="270" r="95" fill="#d8b68d" opacity=".45"/>
+  <ellipse cx="365" cy="175" rx="224" ry="128" fill="#9c4e2e" opacity=".13"/>
+  <ellipse cx="360" cy="160" rx="220" ry="130" fill="url(#bowl)"/>
+  <ellipse cx="360" cy="151" rx="191" ry="103" fill="#6f2c20"/>
+  <ellipse cx="360" cy="146" rx="180" ry="93" fill="url(#sauce)"/>
+  <g fill="none" stroke-linecap="round" stroke-width="11">
+    <path d="M220 133c60-45 94 58 150 6s87-27 130 22" stroke="#f5c76f"/><path d="M218 164c52 54 96-50 145 1s89 42 145-5" stroke="#ffd889"/><path d="M255 105c-5 49 84 18 92 70s78 33 114-1" stroke="#f6d17e"/><path d="M273 190c36-56 77 10 112-22s66-25 84 10" stroke="#eeb75a"/><path d="M300 103c-8 31 40 41 33 71s-32 26-39 42" stroke="#ffdf98"/>
+  </g>
+  <g fill="#6f8b48"><ellipse cx="306" cy="122" rx="10" ry="5" transform="rotate(-35 306 122)"/><ellipse cx="423" cy="178" rx="12" ry="6" transform="rotate(24 423 178)"/><ellipse cx="365" cy="113" rx="11" ry="5" transform="rotate(45 365 113)"/><ellipse cx="280" cy="177" rx="10" ry="5" transform="rotate(20 280 177)"/><ellipse cx="455" cy="137" rx="10" ry="5" transform="rotate(-30 455 137)"/></g>
+  <g fill="#f7d6a2"><circle cx="332" cy="152" r="4"/><circle cx="394" cy="130" r="4"/><circle cx="405" cy="192" r="4"/><circle cx="291" cy="143" r="3"/><circle cx="452" cy="165" r="3"/></g>
+  <path d="M146 42c18 10 29 24 30 42M576 45c-13 11-18 24-17 37" stroke="#fff5e5" stroke-width="5" fill="none" stroke-linecap="round" opacity=".8"/>
+</svg>
