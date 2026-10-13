@@ -1,13 +1,6 @@
-# DishFind Chrome Extension Starter
+# Cooks Chrome Extension Sprint )
 
 This is a minimal Chrome Extension Manifest V3 starter for the team's recipe popup UI.
-
-## Load it in Chrome
-1. Unzip the project folder if needed.
-2. Open `chrome://extensions`.
-3. Turn on **Developer mode**.
-4. Choose **Load unpacked** and select the `recipe-extension-skeleton` folder (the folder containing `manifest.json`).
-5. Click the extension's toolbar icon to open the recipe card.
 
 ## Current demo
 - Hardcoded recipe object in `popup.js`.
@@ -35,6 +28,6 @@ The `recipe` object in `popup.js` is the placeholder data shape. Teammates can r
 ```
 
 ## Important next steps
-- This is the **toolbar popup** version. A popup that appears beside selected text or over the current webpage (like the screenshot) requires a content script and a trigger/positioning mechanism; that is separate from the toolbar popup and can be added once the team confirms how it should open.
-- The demo contains no Gemini API call and no backend. Do not put API keys or secrets in extension code. API calls and secret handling should be implemented in the appropriate service/backend by the teammate owning that work.
-- Recipe and reference data here are sample content for UI development, not verified recommendations.
+- This is the **popup** version. A popup that appears beside selected text or over the current webpage (like the screenshot) requires a content script and a trigger/positioning mechanism; that is separate from the toolbar popup and can be added once the team confirms how it should open.
+- The demo contains no Gemini API call. API calls and secret handling should be implemented in the appropriate service/backend by the Illia and Ayushi owning that work.
+- Recipe and reference data here are sample content for UI development, not real impementation.
