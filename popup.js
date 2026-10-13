@@ -111,6 +111,16 @@ function renderRecipe(data) {
   // 6. DISPLAY REFERENCE LINKS
 }
 
+// Allow users to select an image from a webpage
+// and use that exact image in the Cooks popup.
+//
+// Possible implementation:
+// 1. Add a Chrome context-menu option when users right-click an image.
+// 2. Capture the selected image URL using a background service worker.
+// 3. Pass the image URL to the popup using chrome.storage or messaging.
+// 4. Display the selected image instead of the default recipe image.
+
+
 // Suugestion
 // LIKE BUTTON
 
