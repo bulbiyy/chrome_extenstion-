@@ -7,6 +7,7 @@ This is a minimal Chrome Extension Manifest V3 starter for the team's recipe pop
 - Rounded recipe card with image, recipe title, cooking details, ingredients, steps, YouTube search link, and reference links.
 - Like button interaction (visual only; it is not persisted yet).
 - Defensive rendering for absent fields and malformed reference URLs.
+- Content-script request packages for selected text and images, forwarded to the background service worker and acknowledged back to the page.
 
 ## Team integration contract
 The `recipe` object in `popup.js` is the placeholder data shape. Teammates can replace its values or call `renderRecipe(recipeData)` when API/classification output is ready. Keep UI rendering separate from API calls.
@@ -27,7 +28,12 @@ The `recipe` object in `popup.js` is the placeholder data shape. Teammates can r
 }
 ```
 
+## Selection message flow
+- `content.js` builds JSON packages with a `type` and `payload` for text or image selections.
+- `background.js` receives the packages, stores the selection for the popup tester, and replies with a `COOKS_SELECTION_RECEIVED` or `COOKS_ERROR` message.
+- The content script returns that response to the page as a `window` message with `source: "cooks-extension"` and `type: "COOKS_RESPONSE"`.
+- Image packages currently include the image URL and alt text (when present), not downloaded image bytes.
+
 ## Important next steps
-- This is the **popup** version. A popup that appears beside selected text or over the current webpage (like the screenshot) requires a content script and a trigger/positioning mechanism; that is separate from the toolbar popup and can be added once the team confirms how it should open.
-- The demo contains no Gemini API call. API calls and secret handling should be implemented in the appropriate service/backend by the Illia and Ayushi owning that work.
+- The background response is currently an acknowledgement; it does not call Gemini yet. Connect the request handling to the approved backend/service before adding Gemini credentials or API calls.
 - Recipe and reference data here are sample content for UI development, not real impementation.
