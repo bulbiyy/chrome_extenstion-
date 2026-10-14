@@ -46,7 +46,9 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     return;
   }
 
-  let selection;
+  let selectionType;
+  let fallbackText;
+  let fallbackImageUrl;
   if (info.menuItemId === IMAGE_MENU_ID) {
     if (!info.srcUrl) {
       return;
@@ -65,22 +67,106 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       return;
     }
 
-    selection = {
-      selectedImageUrl: imageUrl.href,
-      selectedText: ""
-    };
+    selectionType = "image";
+    fallbackImageUrl = imageUrl.href;
   } else {
-    const selectedText = info.selectionText?.trim();
-    if (!selectedText) {
+    fallbackText = info.selectionText?.trim();
+    if (!fallbackText) {
       return;
     }
 
-    selection = { selectedText };
+    selectionType = "text";
   }
 
-  chrome.storage.local.set(selection)
+  if (typeof tab.id !== "number") {
+    console.error("Could not determine which tab sent the selection.");
+    return;
+  }
+
+  chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    files: ["content.js"]
+  })
+    .then(() => chrome.tabs.sendMessage(tab.id, {
+      type: "COOKS_CAPTURE_SELECTION",
+      payload: { selectionType, fallbackText, fallbackImageUrl }
+    }))
     .then(() => chrome.action.openPopup({ windowId: tab.windowId }))
     .catch((error) => {
-      console.error("Could not save the selection or open DishFind:", error);
+      console.error(
+        "Could not inject the content script or send the selection. This page may not allow extension scripts:",
+        error
+      );
     });
+});
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (sender.id !== chrome.runtime.id || !sender.tab) {
+    return;
+  }
+
+  if (message?.type === "IDENTIFY_DISH_FROM_TEXT") {
+    const text = message.payload?.text;
+    if (typeof text !== "string" || !text.trim()) {
+      sendResponse({
+        type: "COOKS_ERROR",
+        payload: { message: "The text selection is empty." }
+      });
+      return;
+    }
+
+    chrome.storage.local.set({
+      selectedText: text.trim(),
+      selectedImageUrl: ""
+    }).then(() => {
+      sendResponse({
+        type: "COOKS_SELECTION_RECEIVED",
+        payload: {
+          selectionType: "text",
+          text: text.trim(),
+          pageUrl: message.payload.pageUrl
+        }
+      });
+    }).catch((error) => {
+      console.error("Could not save the selected text:", error);
+      sendResponse({
+        type: "COOKS_ERROR",
+        payload: { message: "Could not save the selected text." }
+      });
+    });
+    return true;
+  }
+
+  if (message?.type === "IDENTIFY_DISH_FROM_IMAGE") {
+    const { imageUrl, altText, pageUrl } = message.payload || {};
+    if (typeof imageUrl !== "string" || !imageUrl) {
+      sendResponse({
+        type: "COOKS_ERROR",
+        payload: { message: "The image URL is missing." }
+      });
+      return;
+    }
+
+    chrome.storage.local.set({
+      selectedImageUrl: imageUrl,
+      selectedText: ""
+    }).then(() => {
+      sendResponse({
+        type: "COOKS_SELECTION_RECEIVED",
+        payload: {
+          selectionType: "image",
+          imageUrl,
+          altText: typeof altText === "string" ? altText : "",
+          pageUrl
+        }
+      });
+    }).catch((error) => {
+      console.error("Could not save the selected image:", error);
+      sendResponse({
+        type: "COOKS_ERROR",
+        payload: { message: "Could not save the selected image." }
+      });
+    });
+    return true;
+  }
 });
