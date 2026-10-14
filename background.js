@@ -102,7 +102,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     });
 });
 
-// Store selection packages for the popup and acknowledge or report processing errors.
+// Process text selections with Gemini; keep image selections available to the popup tester.
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (sender.id !== chrome.runtime.id || !sender.tab) {
     return;
@@ -118,23 +118,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return;
     }
 
+    const selectedText = text.trim();
     chrome.storage.local.set({
-      selectedText: text.trim(),
-      selectedImageUrl: ""
+      selectedText,
+      selectedImageUrl: "",
+      recipeResponse: null
     }).then(() => {
+      const detectDishFromText = globalThis.detectDishFromText;
+      if (typeof detectDishFromText !== "function") {
+        throw new Error("The Gemini text client is not available.");
+      }
+      return detectDishFromText(selectedText);
+    }).then((result) => chrome.storage.local.set({ recipeResponse: result })
+      .then(() => result))
+    .then((result) => {
       sendResponse({
-        type: "COOKS_SELECTION_RECEIVED",
-        payload: {
-          selectionType: "text",
-          text: text.trim(),
-          pageUrl: message.payload.pageUrl
-        }
+        type: "COOKS_RECIPE_RESULT",
+        payload: result
       });
     }).catch((error) => {
-      console.error("Could not save the selected text:", error);
+      console.error("Could not process the selected text:", error);
       sendResponse({
         type: "COOKS_ERROR",
-        payload: { message: "Could not save the selected text." }
+        payload: { message: error.message || "Could not process the selected text." }
       });
     });
     return true;
@@ -150,18 +156,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return;
     }
 
+    const recipeResponse = {
+      ok: false,
+      error: {
+        code: "image_not_supported",
+        message: "The image was captured, but image identification is not implemented in the Gemini client yet."
+      }
+    };
     chrome.storage.local.set({
       selectedImageUrl: imageUrl,
-      selectedText: ""
+      selectedText: "",
+      recipeResponse
     }).then(() => {
       sendResponse({
         type: "COOKS_SELECTION_RECEIVED",
-        payload: {
-          selectionType: "image",
-          imageUrl,
-          altText: typeof altText === "string" ? altText : "",
-          pageUrl
-        }
+        payload: recipeResponse
       });
     }).catch((error) => {
       console.error("Could not save the selected image:", error);

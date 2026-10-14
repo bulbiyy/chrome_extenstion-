@@ -15,9 +15,12 @@
 // is missing.
 
 function setText(id, value, fallback = "") {
-  // TODO: Find the HTML element using its ID.
-  // TODO: If the element exists, set its textContent.
-  // TODO: Use fallback when value is missing or empty.
+  const element = document.getElementById(id);
+  if (element) {
+    element.textContent = typeof value === "string" && value.trim()
+      ? value
+      : fallback;
+  }
 }
 
 
@@ -30,43 +33,56 @@ function setText(id, value, fallback = "") {
 // The UI should accept the same object regardless of whether it comes from demo data, Gemini, or the classification component.
 
 function renderRecipe(data) {
+  const ingredients = document.getElementById("ingredients");
+  const instructions = document.getElementById("instructions");
+  const status = document.getElementById("recipe-status");
 
-  // 1. DISPLAY BASIC RECIPE INFORMATION
-  // the dish name in the element "dish-name".
-  // the category in "recipe-category".
-  // the description in "dish-description".
-  // the cooking time in "cook-time".
-  // the number of servings in "servings".
-  // the difficulty in "difficulty".
+  if (!data?.isDish || !data.recipe) {
+    if (status) {
+      status.hidden = false;
+      status.textContent = "The selected text was not identified as a dish. Try another selection.";
+    }
+    return;
+  }
 
-  // 2. DISPLAY THE DISH IMAGE
-  // Find the image element with ID "dish-image".
-  //     If the element and image path exist:
-  //   - Set the image element's src to data.image.
-  //   - Set its alt text to describe the dish.
+  setText("dish-name", data.dishName, "Recipe");
+  setText("recipe-category", "RECIPE");
+  setText("dish-description", "Recipe generated from your selected text.");
+  setText("cook-time", "");
+  setText("servings", "");
+  setText("difficulty", "");
 
-  // 3. DISPLAY THE INGREDIENTS
-  // Find the list element with ID "ingredients".
-  // Clear any existing ingredient list items.
-  // Check that data.ingredients is an array.
-  // For each ingredient:
-  //   - Create a new <li> element.
-  //   - Set its textContent to the ingredient.
-  //   - Append it to the ingredients list.
+  if (ingredients) {
+    ingredients.replaceChildren();
+    for (const item of data.recipe.ingredients) {
+      const listItem = document.createElement("li");
+      listItem.textContent = item;
+      ingredients.append(listItem);
+    }
+  }
 
-  // SECURITY:
-  // Use textContent instead of inserting untrusted HTML.
+  if (instructions) {
+    instructions.replaceChildren();
+    for (const step of data.recipe.steps) {
+      const listItem = document.createElement("li");
+      listItem.textContent = step;
+      instructions.append(listItem);
+    }
+  }
 
+  const youtubeLink = document.getElementById("youtube-link");
+  if (youtubeLink) {
+    youtubeLink.href = `https://www.youtube.com/results?search_query=${encodeURIComponent(`${data.dishName} recipe`)}`;
+  }
 
-  // 4. DISPLAY THE COOKING INSTRUCTION
-
-  // 5. SET UP THE YOUTUBE RECIPE LINK
-
-  // 6. DISPLAY REFERENCE LINKS
+  if (status) {
+    status.hidden = true;
+    status.textContent = "";
+  }
 }
 
-// Show captured text as the tester popup's recipe title.
-async function loadSelectedText() {
+// Display the stored Gemini recipe or report why a recipe is unavailable.
+async function loadRecipeResponse() {
   const title = document.getElementById("dish-name");
   if (!title) {
     console.error("Could not find the recipe title element.");
@@ -74,9 +90,24 @@ async function loadSelectedText() {
   }
   const defaultTitle = title.textContent;
   try {
-    title.textContent = await getSelectedText() || defaultTitle;
+    const response = await getRecipeResponse();
+    if (!response) {
+      title.textContent = await getSelectedText() || defaultTitle;
+      return;
+    }
+
+    if (!response.ok) {
+      const status = document.getElementById("recipe-status");
+      if (status) {
+        status.hidden = false;
+        status.textContent = response.error?.message || "The recipe request could not be completed.";
+      }
+      return;
+    }
+
+    renderRecipe(response.data);
   } catch (error) {
-    console.error("Could not load the selected text:", error);
+    console.error("Could not load the recipe response:", error);
   }
 }
 
@@ -124,7 +155,7 @@ async function loadPopupImage() {
   }
 }
 
-loadSelectedText();
+loadRecipeResponse();
 loadPopupImage();
 
 const recipe = {

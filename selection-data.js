@@ -13,3 +13,9 @@ async function getSelectedImage() {
     ? result.selectedImageUrl
     : null;
 }
+
+// Retrieve the last Gemini result or processing error for the popup tester.
+async function getRecipeResponse() {
+  const result = await chrome.storage.local.get("recipeResponse");
+  return result.recipeResponse || null;
+}

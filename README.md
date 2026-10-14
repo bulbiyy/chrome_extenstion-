@@ -3,7 +3,9 @@
 This branch combines the PBI 1 Chrome popup skeleton with the PBI 4 Gemini
 text input and API response component.
 
-The background client exports the dish detection function call with Gemini user content as an argument and returns the raw dish judgement. At the moment, no page selections, extenstion messages, cache results, or confidence thresholds are used. This lets the future selection/message caller pass highlighted webpage text directly, without coupling the API to a UI or content script.
+The background client exports `detectDishFromText(selectedText)`. When a text selection is chosen from the context menu, `content.js` packages it and sends it to the service worker. `background.js` calls the Gemini client, stores the result, and replies through the content script. The popup tester reads the stored result and displays the dish name, ingredients, and steps.
+
+Image selections are captured and displayed by the popup, but the Gemini client currently supports text only. Image identification needs a separate multimodal request implementation.
 
 The client uses gemini-2.5-flash (https://ai.google.dev/gemini-api/docs/models/gemini-2.5-flash) and the Gemini [generateContent API] (https://ai.google.dev/api/generate-content).
 
@@ -15,8 +17,7 @@ The client uses gemini-2.5-flash (https://ai.google.dev/gemini-api/docs/models/g
 
 4. Open chrome://extensions and enable Developer mode.
 5. Select Load unpacked and choose this project folder.
-6. On the Cooks extension card, open the service worker's Inspect console.
-   The service worker exposes detectDishFromText only for this manual PBI test.
+6. On the Cooks extension card, open the service worker's Inspect console if you want to test the Gemini client directly.
 7. Run these examples in that console:
 
    // await detectDishFromText("sushi");
