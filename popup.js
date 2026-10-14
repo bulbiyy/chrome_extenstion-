@@ -65,6 +65,7 @@ function renderRecipe(data) {
   // 6. DISPLAY REFERENCE LINKS
 }
 
+// Show captured text as the tester popup's recipe title.
 async function loadSelectedText() {
   const title = document.getElementById("dish-name");
   if (!title) {
@@ -79,6 +80,7 @@ async function loadSelectedText() {
   }
 }
 
+// Show the captured image, falling back to the bundled test image if needed.
 async function loadPopupImage() {
   const image = document.getElementById("dish-image");
   if (!image) {

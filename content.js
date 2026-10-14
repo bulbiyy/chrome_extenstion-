@@ -6,6 +6,7 @@ globalThis.__cooksContentScriptLoaded = true;
 
 let contextImage = null;
 
+// Remember the image under the pointer when the user opens the context menu.
 document.addEventListener("contextmenu", (event) => {
   const target = event.target;
   contextImage = target instanceof HTMLImageElement
@@ -16,6 +17,7 @@ document.addEventListener("contextmenu", (event) => {
     : null;
 }, true);
 
+// Package highlighted text and its source page for the background handler.
 function createTextRequestPackage(text) {
   return {
     type: "IDENTIFY_DISH_FROM_TEXT",
@@ -26,6 +28,7 @@ function createTextRequestPackage(text) {
   };
 }
 
+// Package the selected image URL, optional alt text, and source page.
 function createImageRequestPackage(imageUrl, altText = "") {
   return {
     type: "IDENTIFY_DISH_FROM_IMAGE",
@@ -37,6 +40,7 @@ function createImageRequestPackage(imageUrl, altText = "") {
   };
 }
 
+// Choose the relevant selection, build its request package, and send it to background.
 function sendSelectionPackage(message) {
   const { selectionType, fallbackText, fallbackImageUrl } = message.payload || {};
   let requestPackage;
@@ -63,6 +67,7 @@ function sendSelectionPackage(message) {
   return chrome.runtime.sendMessage(requestPackage);
 }
 
+// Relay the background response into the page context.
 function returnResponseToPage(response) {
   window.postMessage(
     {
@@ -74,6 +79,7 @@ function returnResponseToPage(response) {
   );
 }
 
+// Handle selection-capture requests sent by the background service worker.
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type !== "COOKS_CAPTURE_SELECTION") {
     return;

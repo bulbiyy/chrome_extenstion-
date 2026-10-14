@@ -1,6 +1,7 @@
 const IMAGE_MENU_ID = "use-image-in-dishfind";
 const TEXT_MENU_ID = "use-text-in-dishfind";
 
+// Rebuild the image and text context-menu options after installation or update.
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll(() => {
     if (chrome.runtime.lastError) {
@@ -36,6 +37,7 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
+// Forward the selected page content through the content script, then open the tester popup.
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId !== IMAGE_MENU_ID && info.menuItemId !== TEXT_MENU_ID) {
     return;
@@ -100,6 +102,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     });
 });
 
+// Store selection packages for the popup and acknowledge or report processing errors.
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (sender.id !== chrome.runtime.id || !sender.tab) {
     return;
