@@ -5,6 +5,13 @@
   "description": "Discover recipes for dishes you find online.",
   "action": {
     "default_popup": "popup.html",
-    "default_title": "DishFind"
+    "default_title": "Cooks"
+  },
+  "host_permissions": [
+    "https://generativelanguage.googleapis.com/*"
+  ],
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
   }
 }
