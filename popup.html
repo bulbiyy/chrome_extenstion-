@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cooks extension</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+  <main class="recipe-card" aria-labelledby="dish-name">
+
+    <!-- Header -->
+    <div class="topline">
+      <span class="brand-mark" aria-hidden="true">d.</span>
+      <span class="brand-name">Cooks</span>
+
+      <div class="header-actions">
+
+        <!-- Like button -->
+        <button
+          class="icon-button like-button"
+          id="like-button"
+          type="button"
+          aria-label="Like this recipe"
+          aria-pressed="false"
+          title="Like recipe"
+        >♡</button>
+
+        <!-- Save button -->
+        <button
+          class="icon-button save-button"
+          id="save-button"
+          type="button"
+          aria-label="Save this recipe for later"
+          aria-pressed="false"
+          title="Save recipe"
+        >♧</button>
+
+      </div>
+    </div>
+
+    <!-- Hero image and image label -->
+    <div class="hero-wrap">
+      <img
+        id="dish-image"
+        class="hero-image"
+        src="assets/pasta.svg"
+        alt="Illustration of a bowl of tomato pasta"
+      >
+
+      <span class="image-tag">RECIPE IDEA</span>
+    </div>
+
+    <!-- Main recipe content -->
+    <section class="recipe-content">
+
+      <!-- Recipe title and description -->
+      <p class="eyebrow" id="recipe-category">
+        QUICK &amp; COMFORTING
+      </p>
+
+      <h1 id="dish-name">Creamy Tomato Pasta</h1>
+
+      <p class="description" id="dish-description">
+        A cozy tomato pasta with garlic, basil, and a silky sauce.
+      </p>
+
+      <!-- Cooking time, servings, and difficulty -->
+      <div class="meta-row" aria-label="Recipe details">
+        <span>
+          <span aria-hidden="true">◷</span>
+          <strong id="cook-time">25 min</strong>
+        </span>
+
+        <span>
+          <span aria-hidden="true">♧</span>
+          <strong id="servings">2 servings</strong>
+        </span>
+
+        <span class="difficulty" id="difficulty">Easy</span>
+      </div>
+
+      <!-- Ingredients section -->
+      <div class="section-heading">
+        <h2>What you'll need</h2>
+        <span class="small-note">INGREDIENTS</span>
+      </div>
+
+      <ul id="ingredients" class="ingredient-list"></ul>
+
+      <!-- Cooking instructions section -->
+      <div class="section-heading steps-heading">
+        <h2>Make it</h2>
+        <span class="small-note">IN A FEW STEPS</span>
+      </div>
+
+      <ol id="instructions" class="steps-list"></ol>
+
+      <!-- Link to YouTube -->
+      <a
+        id="youtube-link"
+        class="video-link"
+        href="https://www.youtube.com/results?search_query=creamy+tomato+pasta+recipe"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <span class="play-icon" aria-hidden="true">▶</span>
+
+        <span>
+          <strong>Watch a recipe video</strong>
+          <small>YouTube · cooking walkthroughs</small>
+        </span>
+
+        <span class="link-arrow" aria-hidden="true">↗</span>
+      </a>
+
+      <!-- External recipe references -->
+      <div class="references-block">
+        <h2>References</h2>
+        <div id="references" class="reference-list"></div>
+      </div>
+
+      <!-- Footer -->
+      <p class="footer-note">
+        A starting point for your next meal ✳
+      </p>
+
+    </section>
+  </main>
+
+  <!-- Popup JavaScript -->
+  <script src="selection-data.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
