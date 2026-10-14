@@ -6,7 +6,6 @@ text input and API response component.
 The background client exports `detectDishFromText(selectedText)`. When a text selection is chosen from the context menu, `content.js` packages it and sends it to the service worker. `background.js` calls the Gemini client, stores the result, and replies through the content script. The popup tester reads the stored result and displays the dish name, ingredients, and steps.
 
 Image selections are captured and displayed by the popup, but the Gemini client currently supports text only. Image identification needs a separate multimodal request implementation.
-
 The client uses gemini-2.5-flash (https://ai.google.dev/gemini-api/docs/models/gemini-2.5-flash) and the Gemini [generateContent API] (https://ai.google.dev/api/generate-content).
 
 1. Create a Gemini API key in Google AI Studio.
@@ -21,10 +20,14 @@ The client uses gemini-2.5-flash (https://ai.google.dev/gemini-api/docs/models/g
 7. Run these examples in that console:
 
    // await detectDishFromText("sushi");
-   // Expected output: { ok: true, data: { isDish: true, ... } }
+   // Expected output: { ok: true, data: { isDish: true, confidence: 0.9, ... } }
 
    // await detectDishFromText("hello world");
    // Expected output: { ok: true, data: { isDish: false, dishName: null, recipe: null, ... } }
+
+   // Try a fragment or unclear food reference to check the threshold behavior.
+   // Results below confidence 0.75 are returned with isDish: false.
+   // await detectDishFromText("sauce");
 
    // await detectDishFromText("");
    // Expected output: { ok: false, error: { code: "bad_input", ... } }
