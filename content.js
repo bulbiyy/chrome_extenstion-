@@ -44,11 +44,15 @@ function createImageRequestPackage(imageUrl, altText = "") {
 function sendSelectionPackage(message) {
   const { selectionType, fallbackText, fallbackImageUrl } = message.payload || {};
   let requestPackage;
+  const maxDishLength = 256; // Arbitrary; should be changed to what is considered reasonable
 
   if (selectionType === "text") {
     const selectedText = window.getSelection()?.toString().trim() || fallbackText?.trim();
     if (!selectedText) {
       throw new Error("No selected text was available.");
+    }
+    else if(length(selectedText) > maxDishLength) {
+      throw new Error("Selected text is too long.");
     }
     requestPackage = createTextRequestPackage(selectedText);
   } else if (selectionType === "image") {
