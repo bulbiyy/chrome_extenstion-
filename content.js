@@ -95,13 +95,29 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       sendResponse(response);
     })
     .catch((error) => {
-      const response = {
-        type: "COOKS_ERROR",
-        payload: { message: error.message }
-      };
-      returnResponseToPage(response);
-      sendResponse(response);
-    });
+        const selectionType = message.payload?.selectionType;
+        chrome.runtime.sendMessage({
+          type: "COOKS_SELECTION_ERROR",
+          payload: {
+            selectionType,
+            selectionValue: selectionType === "text"
+              ? message.payload?.fallbackText
+              : message.payload?.fallbackImageUrl,
+            message: error.message
+          }
+        }).then((response) => {
+          returnResponseToPage(response);
+          sendResponse(response);
+        }).catch((reportError) => {
+          console.error("Could not report the selection error to the extension:", reportError);
+          const response = {
+            type: "COOKS_ERROR",
+            payload: { message: error.message }
+          };
+          returnResponseToPage(response);
+          sendResponse(response);
+        });
+      });
 
   return true;
 });

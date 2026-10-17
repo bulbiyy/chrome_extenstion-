@@ -108,6 +108,46 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return;
   }
 
+  if (message?.type === "COOKS_SELECTION_ERROR") {
+    const { selectionType, selectionValue, message: errorMessage } = message.payload || {};
+    if (
+      (selectionType !== "text" && selectionType !== "image") ||
+      typeof errorMessage !== "string" ||
+      !errorMessage
+    ) {
+      sendResponse({
+        type: "COOKS_ERROR",
+        payload: { message: "The selection could not be processed." }
+      });
+      return;
+    }
+
+    const recipeResponse = {
+      ok: false,
+      error: {
+        code: "selection_error",
+        message: errorMessage
+      }
+    };
+    const savedSelection = selectionType === "text"
+      ? { selectedText: typeof selectionValue === "string" ? selectionValue : "", selectedImageUrl: "" }
+      : { selectedImageUrl: typeof selectionValue === "string" ? selectionValue : "", selectedText: "" };
+
+    chrome.storage.local.set({ ...savedSelection, recipeResponse })
+      .then(() => sendResponse({
+        type: "COOKS_ERROR",
+        payload: recipeResponse
+      }))
+      .catch((error) => {
+        console.error("Could not save the selection processing error:", error);
+        sendResponse({
+          type: "COOKS_ERROR",
+          payload: { message: "Could not save the selection processing error." }
+        });
+      });
+    return true;
+  }
+
   if (message?.type === "IDENTIFY_DISH_FROM_TEXT") {
     const text = message.payload?.text;
     if (typeof text !== "string" || !text.trim()) {
