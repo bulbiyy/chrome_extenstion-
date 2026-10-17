@@ -1,12 +1,13 @@
 import "./background.js";
 
-import("./src/background/geminiClient.js")
+globalThis.geminiClientReady = import("./src/background/geminiClient.js")
   .then(({ detectDishFromText }) => {
-    globalThis.detectDishFromText = detectDishFromText;
+    return detectDishFromText;
   })
   .catch((error) => {
     console.error(
-      "Gemini text detection is unavailable. Add config.js from config.example.js to enable it.",
+      "Gemini text detection failed to initialize. Check config.js and the service worker console.",
       error
     );
+    return null;
   });

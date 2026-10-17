@@ -164,11 +164,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       selectedImageUrl: "",
       recipeResponse: null
     }).then(() => {
-      const detectDishFromText = globalThis.detectDishFromText;
-      if (typeof detectDishFromText !== "function") {
-        throw new Error("The Gemini text client is not available.");
+      const clientReady = globalThis.geminiClientReady;
+      if (!clientReady) {
+        throw new Error("Gemini text detection did not initialize. Check the service worker console.");
       }
-      return detectDishFromText(selectedText);
+      return clientReady.then((detectDishFromText) => {
+        if (typeof detectDishFromText !== "function") {
+          throw new Error("Gemini text detection failed to load. Check config.js and the service worker console.");
+        }
+        return detectDishFromText(selectedText);
+      });
     }).then((result) => chrome.storage.local.set({ recipeResponse: result })
       .then(() => result))
     .then((result) => {
@@ -178,10 +183,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
     }).catch((error) => {
       console.error("Could not process the selected text:", error);
-      sendResponse({
-        type: "COOKS_ERROR",
-        payload: { message: error.message || "Could not process the selected text." }
-      });
+      const recipeResponse = {
+        ok: false,
+        error: {
+          code: "client_unavailable",
+          message: error.message || "Could not process the selected text."
+        }
+      };
+      chrome.storage.local.set({ recipeResponse })
+        .then(() => sendResponse({
+          type: "COOKS_ERROR",
+          payload: recipeResponse
+        }))
+        .catch((storageError) => {
+          console.error("Could not save the text-processing error:", storageError);
+          sendResponse({
+            type: "COOKS_ERROR",
+            payload: { message: "Could not process the selection or save its error." }
+          });
+        });
     });
     return true;
   }
