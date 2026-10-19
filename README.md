@@ -8,7 +8,7 @@ The background client exports `detectDishFromText(selectedText)`. When a text se
 Image selections are captured and displayed by the popup, but the Gemini client currently supports text only. Image identification needs a separate multimodal request implementation.
 
 The Gemini client is created in `service-worker.js` with the local API key. Its `createGeminiClient` factory also accepts an injected `fetchImpl`, allowing tests to exercise the response handling without making live API calls.
-The client uses gemini-2.5-flash (https://ai.google.dev/gemini-api/docs/models/gemini-2.5-flash) and the Gemini [generateContent API] (https://ai.google.dev/api/generate-content).
+The client uses gemini-3.8-flash (https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash) and the Gemini [generateContent API] (https://ai.google.dev/api/generate-content).
 
 1. Create a Gemini API key in Google AI Studio.
 2. Copy config.example.js to config.js in the project root.
