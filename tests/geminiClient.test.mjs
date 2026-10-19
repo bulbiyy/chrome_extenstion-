@@ -48,7 +48,7 @@ test("identifies a dish and returns its recipe", async () => {
 
   assert.deepEqual(result, { ok: true, data: dish });
   assert.equal(requests.length, 1);
-  assert.equal(requests[0].url, "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent");
+  assert.equal(requests[0].url, "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent");
   assert.equal(requests[0].options.headers["x-goog-api-key"], API_KEY);
   assert.equal(
     JSON.parse(requests[0].options.body).contents[0].parts[0].text,
