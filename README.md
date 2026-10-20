@@ -44,8 +44,23 @@ selected text, and returns custom results for:
 - HTTP errors
 - unusable Gemini responses
 
-Run the isolated Gemini client unit tests without calling the API:
+The business logic classifies a result as a dish only when Gemini reports
+`isDish: true` and its normalized confidence is at least
+`DISH_CONFIDENCE_THRESHOLD` (`0.75`). Lower-confidence dish guesses are returned
+as `isDish: false` with a null dish name and recipe. The application receives
+the classification, confidence, dish name, and recipe in the
+`COOKS_RECIPE_RESULT` message and the stored `recipeResponse`.
+
+The popup exposes `CooksUserSession.signIn(profile)`,
+`CooksUserSession.getCurrentUser()`, and `CooksUserSession.signOut()` for the
+application layer. A profile must include a non-empty `userId`. Sign-in stores
+the profile and a session marker in `chrome.storage.local`; the current-user
+function returns the profile's `userId` only for an active session, otherwise
+`"anonymous"`. Sign-out clears `chrome.storage.local`, including transient
+selection and recipe data.
+
+Run the business-logic unit tests without calling the API:
 
 ```sh
-node --test tests/geminiClient.test.mjs
+node --test tests/geminiClient.test.mjs tests/userSession.test.mjs
 ```

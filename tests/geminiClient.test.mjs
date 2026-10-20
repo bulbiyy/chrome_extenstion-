@@ -56,7 +56,7 @@ test("identifies a dish and returns its recipe", async () => {
   );
 });
 
-test("returns a valid non-dish classification without a recipe", async () => {
+test("classifies unrelated text as a non-dish without a recipe", async () => {
   const detectDishFromText = createGeminiClient({
     apiKey: API_KEY,
     fetchImpl: mockSuccessfulFetch({
@@ -103,6 +103,30 @@ test("rejects a low-confidence dish classification", async () => {
   assert.equal(result.data.isDish, false);
   assert.equal(result.data.dishName, null);
   assert.equal(result.data.recipe, null);
+});
+
+test("accepts a dish classification at the confidence threshold", async () => {
+  const detectDishFromText = createGeminiClient({
+    apiKey: API_KEY,
+    fetchImpl: mockSuccessfulFetch({
+      isDish: true,
+      confidence: DISH_CONFIDENCE_THRESHOLD,
+      dishName: "Pad Thai",
+      language: "en",
+      recipe: { ingredients: ["rice noodles"], steps: ["Stir-fry."] },
+    }),
+  });
+
+  const result = await detectDishFromText("Pad Thai");
+
+  assert.equal(result.ok, true);
+  assert.equal(result.data.isDish, true);
+  assert.equal(result.data.confidence, DISH_CONFIDENCE_THRESHOLD);
+  assert.equal(result.data.dishName, "Pad Thai");
+  assert.deepEqual(result.data.recipe, {
+    ingredients: ["rice noodles"],
+    steps: ["Stir-fry."],
+  });
 });
 
 test("rejects blank text without calling Gemini", async () => {

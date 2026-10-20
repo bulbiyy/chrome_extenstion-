@@ -104,7 +104,55 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 
 // Process text selections with Gemini; keep image selections available to the popup tester.
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (sender.id !== chrome.runtime.id || !sender.tab) {
+  if (sender.id !== chrome.runtime.id) {
+    return;
+  }
+
+  if (
+    message?.type === "COOKS_SIGN_IN" ||
+    message?.type === "COOKS_GET_CURRENT_USER" ||
+    message?.type === "COOKS_SIGN_OUT"
+  ) {
+    if (sender.tab) {
+      sendResponse({
+        type: "COOKS_USER_SESSION_RESULT",
+        error: { message: "User session actions are only available to extension pages." }
+      });
+      return;
+    }
+
+    const session = globalThis.userSession;
+    if (!session) {
+      sendResponse({
+        type: "COOKS_USER_SESSION_RESULT",
+        error: { message: "The user session service is unavailable." }
+      });
+      return;
+    }
+
+    let operation;
+    if (message.type === "COOKS_SIGN_IN") {
+      operation = session.signIn(message.payload?.profile)
+        .then((profile) => ({ profile }));
+    } else if (message.type === "COOKS_GET_CURRENT_USER") {
+      operation = session.getCurrentUser().then((userId) => ({ userId }));
+    } else {
+      operation = session.signOut().then(() => ({}));
+    }
+
+    operation.then((payload) => {
+      sendResponse({ type: "COOKS_USER_SESSION_RESULT", payload });
+    }).catch((error) => {
+      console.error("Could not complete the user session request:", error);
+      sendResponse({
+        type: "COOKS_USER_SESSION_RESULT",
+        error: { message: error.message || "The user session request failed." }
+      });
+    });
+    return true;
+  }
+
+  if (!sender.tab) {
     return;
   }
 
