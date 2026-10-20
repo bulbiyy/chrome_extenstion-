@@ -1,19 +1,18 @@
-// PBI 13 (right-click version): when the user picks "Use selected text in
-// DishFind" from the right-click menu, background.js injects this file and sends
-// COOKS_SHOW_LOOKUP. We open the Shadow DOM card in a loading state, ask the
-// background worker (Gemini) about the text, then show the answer in the card.
-// Injected on demand together with render-recipe.js and shadow-card.js.
-
+// file to make right click button in the list to call the extension
+ 
 (() => {
   if (globalThis.__cooksLookupLoaded) return;
   globalThis.__cooksLookupLoaded = true;
-
-  const MAX_TEXT_LENGTH = 1000; // same limit as content.js
-  let lookupId = 0; // lets us ignore answers that arrive after the card was closed/replaced
-
-  // Build a readable message from the background's error shapes.
+ 
+  const MAX_TEXT_LENGTH = 1000; 
+  let lookupId = 0; 
+ 
+  // error messages
   function describeError(result) {
     const error = result?.error || {};
+    if (error.code === "image_not_supported") {
+      return "Image recognition isn't available yet. Try highlighting the dish name instead.";
+    }
     const message =
       error.message || result?.message || "The recipe request could not be completed.";
     const details = [
@@ -22,53 +21,72 @@
     ].filter(Boolean);
     return details.length ? `${message} (${details.join(", ")})` : message;
   }
-
-  async function runLookup(text) {
+ 
+  // card.open() replaces any card already on screen, so only one is ever visible.
+  async function ask(request, openOptions) {
     const card = globalThis.__cooksCard;
     if (!card) return;
-
-    if (text.length > MAX_TEXT_LENGTH) {
-      card.open(null, {
-        title: "Selection too long",
-        status: "Highlight just the dish name and try again."
-      });
-      return;
-    }
-
+ 
     const id = ++lookupId;
-    card.open(null, { title: text, status: "Finding a recipe…" });
-
+    card.open(null, openOptions);
+ 
     let response;
     try {
-      response = await chrome.runtime.sendMessage({
-        type: "IDENTIFY_DISH_FROM_TEXT",
-        payload: { text, pageUrl: window.location.href }
-      });
+      response = await chrome.runtime.sendMessage(request);
     } catch (error) {
-      // Usually "Extension context invalidated" after the extension was reloaded.
       if (id === lookupId && card.isOpen()) {
         card.setStatus("Could not reach Cooks. Reload this page and try again.");
       }
       return;
     }
-
-    if (id !== lookupId || !card.isOpen()) return; // closed or replaced meanwhile
-
+ 
+    if (id !== lookupId || !card.isOpen()) return; 
+ 
     const result = response?.payload;
     if (response?.type === "COOKS_RECIPE_RESULT" && result?.ok) {
-      card.update(result.data); // shows the recipe, or "not identified as a dish"
+      card.update(result.data); // shows the recipe
     } else {
       card.setStatus(describeError(result));
     }
   }
-
+ 
+  function runLookup(text) {
+    if (text.length > MAX_TEXT_LENGTH) {
+      globalThis.__cooksCard?.open(null, {
+        title: "Selection too long",
+        status: "Highlight just the dish name and try again."
+      });
+      return;
+    }
+    return ask(
+      {
+        type: "IDENTIFY_DISH_FROM_TEXT",
+        payload: { text, pageUrl: window.location.href }
+      },
+      { title: text, status: "Finding a recipe…" }
+    );
+  }
+ 
+  function runImageLookup(imageUrl) {
+    return ask(
+      {
+        type: "IDENTIFY_DISH_FROM_IMAGE",
+        payload: { imageUrl, altText: "", pageUrl: window.location.href }
+      },
+      { imageUrl, title: "Selected image", status: "Looking at this image…" }
+    );
+  }
+ 
   chrome.runtime.onMessage.addListener((message) => {
     if (message?.type !== "COOKS_SHOW_LOOKUP") return;
-    // Prefer the live selection; fall back to the text Chrome gave the menu
-    // (covers selections made inside iframes).
-    const text =
-      window.getSelection()?.toString().trim() ||
-      message.payload?.fallbackText?.trim();
+    const { selectionType, fallbackText, fallbackImageUrl } = message.payload || {};
+ 
+    if (selectionType === "image") {
+      if (fallbackImageUrl) runImageLookup(fallbackImageUrl);
+      return;
+    }
+ 
+    const text = window.getSelection()?.toString().trim() || fallbackText?.trim();
     if (text) runLookup(text);
   });
 })();

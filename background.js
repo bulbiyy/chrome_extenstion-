@@ -1,23 +1,23 @@
-const IMAGE_MENU_ID = "use-image-in-dishfind";
-const TEXT_MENU_ID = "use-text-in-dishfind";
+const IMAGE_MENU_ID = "use-image-in-cooks";
+const TEXT_MENU_ID = "use-text-in-cooks";
  
-// Rebuild the image and text context-menu options after installation or update.
+// fixed the bug with double window
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll(() => {
     if (chrome.runtime.lastError) {
-      console.error("Could not reset DishFind's context menu:", chrome.runtime.lastError.message);
+      console.error("Could not reset Cooks' context menu:", chrome.runtime.lastError.message);
       return;
     }
  
     chrome.contextMenus.create(
       {
         id: IMAGE_MENU_ID,
-        title: "Use image in DishFind",
+        title: "Use image in Cooks",
         contexts: ["image"]
       },
       () => {
         if (chrome.runtime.lastError) {
-          console.error("Could not create DishFind's context menu:", chrome.runtime.lastError.message);
+          console.error("Could not create Cooks' context menu:", chrome.runtime.lastError.message);
         }
       }
     );
@@ -25,26 +25,26 @@ chrome.runtime.onInstalled.addListener(() => {
     chrome.contextMenus.create(
       {
         id: TEXT_MENU_ID,
-        title: "Use selected text in DishFind",
+        title: "Use selected text in Cooks",
         contexts: ["selection"]
       },
       () => {
         if (chrome.runtime.lastError) {
-          console.error("Could not create DishFind's text menu:", chrome.runtime.lastError.message);
+          console.error("Could not create Cooks' text menu:", chrome.runtime.lastError.message);
         }
       }
     );
   });
 });
  
-// Forward the selected page content through the content script, then open the tester popup.
+// images dublicated in the cooks pop-up card
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId !== IMAGE_MENU_ID && info.menuItemId !== TEXT_MENU_ID) {
     return;
   }
  
   if (!tab || typeof tab.windowId !== "number") {
-    console.error("Could not determine which browser window to open DishFind in.");
+    console.error("Could not determine which browser window to open Cooks in.");
     return;
   }
  
@@ -65,7 +65,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     }
  
     if (imageUrl.protocol !== "http:" && imageUrl.protocol !== "https:") {
-      console.error("DishFind can only use images with HTTP or HTTPS URLs.");
+      console.error("Cooks can only use images with HTTP or HTTPS URLs.");
       return;
     }
  
@@ -85,43 +85,24 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     return;
   }
  
-  // Text selections: show the lookup in the in-page Shadow DOM card (no toolbar popup).
-  if (selectionType === "text") {
-    chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      files: ["render-recipe.js", "shadow-card.js", "lookup.js"]
-    })
-      .then(() => chrome.tabs.sendMessage(tab.id, {
-        type: "COOKS_SHOW_LOOKUP",
-        payload: { fallbackText }
-      }))
-      .catch((error) => {
-        console.error(
-          "Could not show the DishFind card. This page may not allow extension scripts:",
-          error
-        );
-      });
-    return;
-  }
- 
+  // fixing overlaping
   chrome.scripting.executeScript({
     target: { tabId: tab.id },
-    files: ["content.js"]
+    files: ["render-recipe.js", "shadow-card.js", "lookup.js"]
   })
     .then(() => chrome.tabs.sendMessage(tab.id, {
-      type: "COOKS_CAPTURE_SELECTION",
+      type: "COOKS_SHOW_LOOKUP",
       payload: { selectionType, fallbackText, fallbackImageUrl }
     }))
-    .then(() => chrome.action.openPopup({ windowId: tab.windowId }))
     .catch((error) => {
       console.error(
-        "Could not inject the content script or send the selection. This page may not allow extension scripts:",
+        "Could not show the Cooks card. This page may not allow extension scripts:",
         error
       );
     });
 });
  
-// Process text selections with Gemini; keep image selections available to the popup tester.
+// Process text selections with Gemini
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (sender.id !== chrome.runtime.id || !sender.tab) {
     return;
