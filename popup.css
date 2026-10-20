@@ -182,7 +182,14 @@ h1 {
   line-height: 1.12;
   letter-spacing: -0.45px;
 }
- 
+
+.recipe-status {
+  margin: 8px 0;
+  color: var(--accent-dark);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 .description {
   margin: 8px 0 12px;
   color: #66665d;

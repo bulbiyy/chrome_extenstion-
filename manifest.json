@@ -7,26 +7,18 @@
     "default_popup": "popup.html",
     "default_title": "Cooks"
   },
-  "content_scripts": [
-    {
-      "matches": [
-        "<all_urls>"
-      ],
-      "js": [
-        "popup.js",
-        "content.js"
-      ]
-    }
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "storage",
+    "contextMenus",
+    "scripting"
   ],
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "popup.css",
-        "assets/*"
-      ],
-      "matches": [
-        "<all_urls>"
-      ]
-    }
-  ]
+  "host_permissions": [
+    "https://generativelanguage.googleapis.com/*"
+  ],
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  }
 }
