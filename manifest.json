@@ -1,10 +1,32 @@
 {
   "manifest_version": 3,
-  "name": "DishFind",
+  "name": "Cooks",
   "version": "1.0.0",
   "description": "Discover recipes for dishes you find online.",
   "action": {
     "default_popup": "popup.html",
-    "default_title": "DishFind"
-  }
+    "default_title": "Cooks"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "popup.js",
+        "content.js"
+      ]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "popup.css",
+        "assets/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
 }

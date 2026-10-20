@@ -60,12 +60,33 @@ const recipe = {
 // This avoids displaying empty fields when some recipe data
 // is missing.
 
-function setText(id, value, fallback = "") {
-  // TODO: Find the HTML element using its ID.
-  // TODO: If the element exists, set its textContent.
-  // TODO: Use fallback when value is missing or empty.
+function setText(id, value, fallback = "", root = document) {
+  const el = root.getElementById(id);
+  if (!el) return;
+  const text = typeof value === "string" ? value.trim() : value;
+  el.textContent = text ? String(text) : fallback;
+}
+ 
+// Relative paths like "assets/pasta.svg" must resolve against the extension,
+function resolveAssetUrl(path) {
+  if (!path) return "";
+  if (/^(https?:|data:|blob:|chrome-extension:)/i.test(path)) return path;
+  if (typeof chrome !== "undefined" && chrome.runtime?.getURL) {
+    return chrome.runtime.getURL(path);
+  }
+  return path;
 }
 
+
+// Only allow http(s) links; returns null for malformed or unsafe URLs.
+function safeHttpUrl(url) {
+  try {
+    const u = new URL(url);
+    return u.protocol === "https:" || u.protocol === "http:" ? u.href : null;
+  } catch {
+    return null;
+  }
+}
 
 // MAIN FUNCTION: RENDER RECIPE
 
@@ -126,3 +147,6 @@ function renderRecipe(data) {
 
 // PURPOSE:
 // Allow the user to like or unlike the displayed recipe.
+if (location.protocol === "chrome-extension:") {
+  renderRecipe(recipe);
+}
