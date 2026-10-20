@@ -14,26 +14,30 @@
   box-sizing: border-box;
 }
  
-/* body styles for the toolbar popup; .cooks-shell does the same job
-   inside the Shadow DOM, where there is no <body>. */
+/*layout for the toolbar popup */
 body,
 .cooks-shell {
   width: 360px;
   margin: 0;
   padding: 10px;
-  background: #f1eee7;
   color: var(--ink);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
  
+/* beige backdrop fills the popup window*/
 body {
   min-height: 560px;
+  background: #f1eee7;
 }
  
+/* no backdrop or frame*/
 .cooks-shell {
-  border-radius: 28px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  background: transparent;
+}
+ 
+.cooks-shell .recipe-card {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
 }
  
 button,
@@ -182,14 +186,14 @@ h1 {
   line-height: 1.12;
   letter-spacing: -0.45px;
 }
-
+ 
 .recipe-status {
   margin: 8px 0;
   color: var(--accent-dark);
   font-size: 11px;
   line-height: 1.4;
 }
-
+ 
 .description {
   margin: 8px 0 12px;
   color: #66665d;
