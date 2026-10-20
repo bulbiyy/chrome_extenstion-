@@ -1,6 +1,6 @@
 const IMAGE_MENU_ID = "use-image-in-dishfind";
 const TEXT_MENU_ID = "use-text-in-dishfind";
-
+ 
 // Rebuild the image and text context-menu options after installation or update.
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll(() => {
@@ -8,7 +8,7 @@ chrome.runtime.onInstalled.addListener(() => {
       console.error("Could not reset DishFind's context menu:", chrome.runtime.lastError.message);
       return;
     }
-
+ 
     chrome.contextMenus.create(
       {
         id: IMAGE_MENU_ID,
@@ -21,7 +21,7 @@ chrome.runtime.onInstalled.addListener(() => {
         }
       }
     );
-
+ 
     chrome.contextMenus.create(
       {
         id: TEXT_MENU_ID,
@@ -36,18 +36,18 @@ chrome.runtime.onInstalled.addListener(() => {
     );
   });
 });
-
+ 
 // Forward the selected page content through the content script, then open the tester popup.
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId !== IMAGE_MENU_ID && info.menuItemId !== TEXT_MENU_ID) {
     return;
   }
-
+ 
   if (!tab || typeof tab.windowId !== "number") {
     console.error("Could not determine which browser window to open DishFind in.");
     return;
   }
-
+ 
   let selectionType;
   let fallbackText;
   let fallbackImageUrl;
@@ -55,7 +55,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     if (!info.srcUrl) {
       return;
     }
-
+ 
     let imageUrl;
     try {
       imageUrl = new URL(info.srcUrl);
@@ -63,12 +63,12 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       console.error("The selected image URL is invalid:", error);
       return;
     }
-
+ 
     if (imageUrl.protocol !== "http:" && imageUrl.protocol !== "https:") {
       console.error("DishFind can only use images with HTTP or HTTPS URLs.");
       return;
     }
-
+ 
     selectionType = "image";
     fallbackImageUrl = imageUrl.href;
   } else {
@@ -76,15 +76,34 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     if (!fallbackText) {
       return;
     }
-
+ 
     selectionType = "text";
   }
-
+ 
   if (typeof tab.id !== "number") {
     console.error("Could not determine which tab sent the selection.");
     return;
   }
-
+ 
+  // Text selections: show the lookup in the in-page Shadow DOM card (no toolbar popup).
+  if (selectionType === "text") {
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ["render-recipe.js", "shadow-card.js", "lookup.js"]
+    })
+      .then(() => chrome.tabs.sendMessage(tab.id, {
+        type: "COOKS_SHOW_LOOKUP",
+        payload: { fallbackText }
+      }))
+      .catch((error) => {
+        console.error(
+          "Could not show the DishFind card. This page may not allow extension scripts:",
+          error
+        );
+      });
+    return;
+  }
+ 
   chrome.scripting.executeScript({
     target: { tabId: tab.id },
     files: ["content.js"]
@@ -101,13 +120,13 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       );
     });
 });
-
+ 
 // Process text selections with Gemini; keep image selections available to the popup tester.
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (sender.id !== chrome.runtime.id || !sender.tab) {
     return;
   }
-
+ 
   if (message?.type === "COOKS_SELECTION_ERROR") {
     const { selectionType, selectionValue, message: errorMessage } = message.payload || {};
     if (
@@ -121,7 +140,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
       return;
     }
-
+ 
     const recipeResponse = {
       ok: false,
       error: {
@@ -132,7 +151,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const savedSelection = selectionType === "text"
       ? { selectedText: typeof selectionValue === "string" ? selectionValue : "", selectedImageUrl: "" }
       : { selectedImageUrl: typeof selectionValue === "string" ? selectionValue : "", selectedText: "" };
-
+ 
     chrome.storage.local.set({ ...savedSelection, recipeResponse })
       .then(() => sendResponse({
         type: "COOKS_ERROR",
@@ -147,7 +166,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
     return true;
   }
-
+ 
   if (message?.type === "IDENTIFY_DISH_FROM_TEXT") {
     const text = message.payload?.text;
     if (typeof text !== "string" || !text.trim()) {
@@ -157,7 +176,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
       return;
     }
-
+ 
     const selectedText = text.trim();
     chrome.storage.local.set({
       selectedText,
@@ -205,7 +224,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
     return true;
   }
-
+ 
   if (message?.type === "IDENTIFY_DISH_FROM_IMAGE") {
     const { imageUrl, altText, pageUrl } = message.payload || {};
     if (typeof imageUrl !== "string" || !imageUrl) {
@@ -215,7 +234,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
       return;
     }
-
+ 
     const recipeResponse = {
       ok: false,
       error: {
