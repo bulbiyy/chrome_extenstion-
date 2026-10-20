@@ -108,6 +108,46 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return;
   }
 
+  if (message?.type === "COOKS_SELECTION_ERROR") {
+    const { selectionType, selectionValue, message: errorMessage } = message.payload || {};
+    if (
+      (selectionType !== "text" && selectionType !== "image") ||
+      typeof errorMessage !== "string" ||
+      !errorMessage
+    ) {
+      sendResponse({
+        type: "COOKS_ERROR",
+        payload: { message: "The selection could not be processed." }
+      });
+      return;
+    }
+
+    const recipeResponse = {
+      ok: false,
+      error: {
+        code: "selection_error",
+        message: errorMessage
+      }
+    };
+    const savedSelection = selectionType === "text"
+      ? { selectedText: typeof selectionValue === "string" ? selectionValue : "", selectedImageUrl: "" }
+      : { selectedImageUrl: typeof selectionValue === "string" ? selectionValue : "", selectedText: "" };
+
+    chrome.storage.local.set({ ...savedSelection, recipeResponse })
+      .then(() => sendResponse({
+        type: "COOKS_ERROR",
+        payload: recipeResponse
+      }))
+      .catch((error) => {
+        console.error("Could not save the selection processing error:", error);
+        sendResponse({
+          type: "COOKS_ERROR",
+          payload: { message: "Could not save the selection processing error." }
+        });
+      });
+    return true;
+  }
+
   if (message?.type === "IDENTIFY_DISH_FROM_TEXT") {
     const text = message.payload?.text;
     if (typeof text !== "string" || !text.trim()) {
@@ -124,11 +164,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       selectedImageUrl: "",
       recipeResponse: null
     }).then(() => {
-      const detectDishFromText = globalThis.detectDishFromText;
-      if (typeof detectDishFromText !== "function") {
-        throw new Error("The Gemini text client is not available.");
+      const clientReady = globalThis.geminiClientReady;
+      if (!clientReady) {
+        throw new Error("Gemini text detection did not initialize. Check the service worker console.");
       }
-      return detectDishFromText(selectedText);
+      return clientReady.then((detectDishFromText) => {
+        if (typeof detectDishFromText !== "function") {
+          throw new Error("Gemini text detection failed to load. Check config.js and the service worker console.");
+        }
+        return detectDishFromText(selectedText);
+      });
     }).then((result) => chrome.storage.local.set({ recipeResponse: result })
       .then(() => result))
     .then((result) => {
@@ -138,10 +183,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
     }).catch((error) => {
       console.error("Could not process the selected text:", error);
-      sendResponse({
-        type: "COOKS_ERROR",
-        payload: { message: error.message || "Could not process the selected text." }
-      });
+      const recipeResponse = {
+        ok: false,
+        error: {
+          code: "client_unavailable",
+          message: error.message || "Could not process the selected text."
+        }
+      };
+      chrome.storage.local.set({ recipeResponse })
+        .then(() => sendResponse({
+          type: "COOKS_ERROR",
+          payload: recipeResponse
+        }))
+        .catch((storageError) => {
+          console.error("Could not save the text-processing error:", storageError);
+          sendResponse({
+            type: "COOKS_ERROR",
+            payload: { message: "Could not process the selection or save its error." }
+          });
+        });
     });
     return true;
   }

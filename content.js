@@ -44,11 +44,15 @@ function createImageRequestPackage(imageUrl, altText = "") {
 function sendSelectionPackage(message) {
   const { selectionType, fallbackText, fallbackImageUrl } = message.payload || {};
   let requestPackage;
+  const MAX_TEXT_LENGTH = 1000; // Define the maximum allowed length for selected text
 
   if (selectionType === "text") {
     const selectedText = window.getSelection()?.toString().trim() || fallbackText?.trim();
     if (!selectedText) {
       throw new Error("No selected text was available.");
+    }
+    else if (selectedText.length > MAX_TEXT_LENGTH) {
+      throw new Error("Selected text is too long.");
     }
     requestPackage = createTextRequestPackage(selectedText);
   } else if (selectionType === "image") {
@@ -91,13 +95,29 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       sendResponse(response);
     })
     .catch((error) => {
-      const response = {
-        type: "COOKS_ERROR",
-        payload: { message: error.message }
-      };
-      returnResponseToPage(response);
-      sendResponse(response);
-    });
+        const selectionType = message.payload?.selectionType;
+        chrome.runtime.sendMessage({
+          type: "COOKS_SELECTION_ERROR",
+          payload: {
+            selectionType,
+            selectionValue: selectionType === "text"
+              ? message.payload?.fallbackText
+              : message.payload?.fallbackImageUrl,
+            message: error.message
+          }
+        }).then((response) => {
+          returnResponseToPage(response);
+          sendResponse(response);
+        }).catch((reportError) => {
+          console.error("Could not report the selection error to the extension:", reportError);
+          const response = {
+            type: "COOKS_ERROR",
+            payload: { message: error.message }
+          };
+          returnResponseToPage(response);
+          sendResponse(response);
+        });
+      });
 
   return true;
 });

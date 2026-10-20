@@ -100,7 +100,15 @@ async function loadRecipeResponse() {
       const status = document.getElementById("recipe-status");
       if (status) {
         status.hidden = false;
-        status.textContent = response.error?.message || "The recipe request could not be completed.";
+        const error = response.error || {};
+        const details = [
+          error.code,
+          Number.isInteger(error.status) ? `HTTP ${error.status}` : null
+        ].filter(Boolean);
+        status.textContent = [
+          error.message || "The recipe request could not be completed.",
+          details.length ? `(${details.join(", ")})` : ""
+        ].filter(Boolean).join(" ");
       }
       return;
     }

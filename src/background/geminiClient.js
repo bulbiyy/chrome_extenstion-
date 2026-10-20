@@ -1,6 +1,4 @@
-import { GEMINI_API_KEY } from "../../config.js";
-
-const MODEL = "gemini-2.5-flash";
+const MODEL = "gemini-3.8-flash";
 const REQUEST_TIMEOUT_MS = 15_000;
 const API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 export const DISH_CONFIDENCE_THRESHOLD = 0.75;
@@ -47,12 +45,12 @@ function buildTextRequest(selectedText) {
   };
 }
 
-async function callGemini(requestBody, signal) {
-  const response = await fetch(`${API_BASE_URL}/${MODEL}:generateContent`, {
+async function callGemini(requestBody, signal, apiKey, fetchImpl) {
+  const response = await fetchImpl(`${API_BASE_URL}/${MODEL}:generateContent`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-goog-api-key": GEMINI_API_KEY,
+      "x-goog-api-key": apiKey,
     },
     body: JSON.stringify(requestBody),
     signal,
@@ -120,58 +118,69 @@ function failure(code, message, status) {
   return { ok: false, error };
 }
 
-export async function detectDishFromText(selectedText) {
-  if (typeof selectedText !== "string" || selectedText.trim() === "") {
-    return failure("bad_input", "Please select some text to check.");
-  }
-
-  let controller;
-  let timeoutId;
-
-  try {
-    controller = new AbortController();
-    const timeout = new Promise((_, reject) => {
-      timeoutId = setTimeout(() => {
-        controller.abort();
-        reject(new Error("Gemini request timed out."));
-      }, REQUEST_TIMEOUT_MS);
-    });
-    const result = await Promise.race([
-      callGemini(buildTextRequest(selectedText), controller.signal),
-      timeout,
-    ]);
-
-    if (!result.ok) {
-      return failure(
-        "api_error",
-        "The recipe service could not process the request.",
-        result.status,
-      );
+export function createGeminiClient({
+  apiKey,
+  fetchImpl = globalThis.fetch,
+  requestTimeoutMs = REQUEST_TIMEOUT_MS,
+}) {
+  return async function detectDishFromText(selectedText) {
+    if (typeof selectedText !== "string" || selectedText.trim() === "") {
+      return failure("bad_input", "Please select some text to check.");
     }
 
-    const data = parseGeminiResponse(result.body);
-    if (data === null) {
-      return failure(
-        "bad_response",
-        "The recipe service returned an unreadable response.",
-      );
-    }
+    let controller;
+    let timeoutId;
 
-    return { ok: true, data };
-  } catch (error) {
-    if (controller?.signal.aborted) {
-      return failure("timeout", "The recipe request took too long.");
-    }
+    try {
+      controller = new AbortController();
+      const timeout = new Promise((_, reject) => {
+        timeoutId = setTimeout(() => {
+          controller.abort();
+          reject(new Error("Gemini request timed out."));
+        }, requestTimeoutMs);
+      });
+      const result = await Promise.race([
+        callGemini(
+          buildTextRequest(selectedText),
+          controller.signal,
+          apiKey,
+          fetchImpl,
+        ),
+        timeout,
+      ]);
 
-    if (error instanceof SyntaxError) {
-      return failure(
-        "bad_response",
-        "The recipe service returned an unreadable response.",
-      );
-    }
+      if (!result.ok) {
+        return failure(
+          "api_error",
+          "The recipe service could not process the request.",
+          result.status,
+        );
+      }
 
-    return failure("network", "Could not connect to the recipe service.");
-  } finally {
-    clearTimeout(timeoutId);
-  }
+      const data = parseGeminiResponse(result.body);
+      if (data === null) {
+        return failure(
+          "bad_response",
+          "The recipe service returned an unreadable response.",
+        );
+      }
+
+      return { ok: true, data };
+    } catch (error) {
+      if (controller?.signal.aborted) {
+        return failure("timeout", "The recipe request took too long.");
+      }
+
+      if (error instanceof SyntaxError) {
+        return failure(
+          "bad_response",
+          "The recipe service returned an unreadable response.",
+        );
+      }
+
+      return failure("network", "Could not connect to the recipe service.");
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  };
 }

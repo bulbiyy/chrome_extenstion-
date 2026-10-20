@@ -1,12 +1,9 @@
+import { GEMINI_API_KEY } from "./config.js";
+import { createGeminiClient } from "./src/background/geminiClient.js";
 import "./background.js";
 
-import("./src/background/geminiClient.js")
-  .then(({ detectDishFromText }) => {
-    globalThis.detectDishFromText = detectDishFromText;
-  })
-  .catch((error) => {
-    console.error(
-      "Gemini text detection is unavailable. Add config.js from config.example.js to enable it.",
-      error
-    );
-  });
+globalThis.geminiClientReady = Promise.resolve(
+  createGeminiClient({ apiKey: GEMINI_API_KEY }),
+);
+globalThis.detectDishFromText = (selectedText) =>
+  globalThis.geminiClientReady.then((detect) => detect(selectedText));
