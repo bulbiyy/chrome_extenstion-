@@ -61,8 +61,8 @@ function returns the profile's `userId` only for an active session, otherwise
 `"anonymous"`. Sign-out clears `chrome.storage.local`, including transient
 selection and recipe data.
 
-Run the business-logic unit tests without calling the API:
+Run the full automated test suite without calling the API:
 
 ```sh
-node --test tests/geminiClient.test.mjs tests/userSession.test.mjs
+node --test tests/geminiClient.test.mjs tests/userSession.test.mjs tests/application.test.mjs
 ```
