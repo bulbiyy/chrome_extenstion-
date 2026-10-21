@@ -1,3 +1,5 @@
+import { validateImageDimensions } from "./src/shared/imageValidation.js";
+
 const IMAGE_MENU_ID = "use-image-in-cooks";
 const TEXT_MENU_ID = "use-text-in-cooks";
  
@@ -37,7 +39,7 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
  
-// images dublicated in the cooks pop-up card
+// images duplicated in the cooks pop-up card
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId !== IMAGE_MENU_ID && info.menuItemId !== TEXT_MENU_ID) {
     return;
@@ -102,7 +104,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     });
 });
  
-// Process text selections with Gemini
+// Process text/image selections with Gemini
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (sender.id !== chrome.runtime.id || !sender.tab) {
     return;
@@ -207,7 +209,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
  
   if (message?.type === "IDENTIFY_DISH_FROM_IMAGE") {
-    const { imageUrl, altText, pageUrl } = message.payload || {};
+    const {
+      imageUrl,
+      altText,
+      pageUrl,
+      imageWidth,
+      imageHeight
+    } = message.payload || {};
     if (typeof imageUrl !== "string" || !imageUrl) {
       sendResponse({
         type: "COOKS_ERROR",
@@ -216,6 +224,32 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return;
     }
  
+    const dimensions = validateImageDimensions(imageWidth, imageHeight);
+    if (!dimensions.valid) {
+      const recipeResponse = {
+        ok: false,
+        error: {
+          code: "invalid_image_size",
+          message: dimensions.message
+        }
+      };
+      chrome.storage.local.set({
+        selectedImageUrl: imageUrl,
+        selectedText: "",
+        recipeResponse
+      }).then(() => sendResponse({
+        type: "COOKS_ERROR",
+        payload: recipeResponse
+      })).catch((error) => {
+        console.error("Could not save the image validation error:", error);
+        sendResponse({
+          type: "COOKS_ERROR",
+          payload: { message: "The image is too large or its dimensions could not be checked." }
+        });
+      });
+      return true;
+    }
+
     const recipeResponse = {
       ok: false,
       error: {
