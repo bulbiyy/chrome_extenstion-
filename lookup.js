@@ -67,11 +67,17 @@
     );
   }
  
-  function runImageLookup(imageUrl) {
+  function runImageLookup(imageUrl, imageDetails) {
     return ask(
       {
         type: "IDENTIFY_DISH_FROM_IMAGE",
-        payload: { imageUrl, altText: "", pageUrl: window.location.href }
+        payload: {
+          imageUrl,
+          altText: imageDetails?.altText || "",
+          imageWidth: imageDetails?.imageWidth,
+          imageHeight: imageDetails?.imageHeight,
+          pageUrl: window.location.href
+        }
       },
       { imageUrl, title: "Selected image", status: "Looking at this image…" }
     );
@@ -79,10 +85,15 @@
  
   chrome.runtime.onMessage.addListener((message) => {
     if (message?.type !== "COOKS_SHOW_LOOKUP") return;
-    const { selectionType, fallbackText, fallbackImageUrl } = message.payload || {};
+    const {
+      selectionType,
+      fallbackText,
+      fallbackImageUrl,
+      fallbackImageDetails
+    } = message.payload || {};
  
     if (selectionType === "image") {
-      if (fallbackImageUrl) runImageLookup(fallbackImageUrl);
+      if (fallbackImageUrl) runImageLookup(fallbackImageUrl, fallbackImageDetails);
       return;
     }
  

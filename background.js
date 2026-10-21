@@ -87,15 +87,48 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     return;
   }
  
-  // fixing overlaping
-  chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    files: ["render-recipe.js", "shadow-card.js", "lookup.js"]
-  })
-    .then(() => chrome.tabs.sendMessage(tab.id, {
+  const readImageDetails = selectionType === "image"
+    ? chrome.scripting.executeScript({
+        target: { tabId: tab.id, frameIds: [info.frameId ?? 0] },
+        args: [fallbackImageUrl],
+        func: (imageUrl) => {
+          const normalizeUrl = (value) => {
+            try {
+              return new URL(value, document.baseURI).href;
+            } catch {
+              return null;
+            }
+          };
+          const selectedUrl = normalizeUrl(imageUrl);
+          const image = Array.from(document.images).find((candidate) =>
+            normalizeUrl(candidate.currentSrc || candidate.src) === selectedUrl ||
+            normalizeUrl(candidate.src) === selectedUrl
+          );
+
+          return image
+            ? {
+                altText: image.alt || "",
+                imageWidth: image.naturalWidth,
+                imageHeight: image.naturalHeight
+              }
+            : null;
+        }
+      }).then((results) => results[0]?.result || null)
+    : Promise.resolve(null);
+
+  readImageDetails
+    .then((imageDetails) => chrome.scripting.executeScript({
+      target: { tabId: tab.id, frameIds: [info.frameId ?? 0] },
+      files: ["render-recipe.js", "shadow-card.js", "lookup.js"]
+    }).then(() => chrome.tabs.sendMessage(tab.id, {
       type: "COOKS_SHOW_LOOKUP",
-      payload: { selectionType, fallbackText, fallbackImageUrl }
-    }))
+      payload: {
+        selectionType,
+        fallbackText,
+        fallbackImageUrl,
+        fallbackImageDetails: imageDetails
+      }
+    }, { frameId: info.frameId ?? 0 })))
     .catch((error) => {
       console.error(
         "Could not show the Cooks card. This page may not allow extension scripts:",
