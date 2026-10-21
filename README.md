@@ -38,7 +38,7 @@ The client uses gemini-3.8-flash (https://ai.google.dev/gemini-api/docs/models/g
 
 To verify the API error path, temporarily replace the key in config.js with an invalid value, reload the extension, and call await detectDishFromText("pad thai"). A non-2xx API response returns { ok: false, error: { code: "api_error", status: <HTTP status>, ... } }.Restore the valid key and reload afterward.
 
-The client has a 15-second request timeout. It never logs the API key or the
+The client has a 60-second request timeout. It never logs the API key or the
 selected text, and returns custom results for:
 - invalid input
 - network errors
