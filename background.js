@@ -1,9 +1,39 @@
-import { validateImageDimensions } from "./src/shared/imageValidation.js";
+const IMAGE_MENU_ID = "use-image-in-dishfind";
+const TEXT_MENU_ID = "use-text-in-dishfind";
 
-const IMAGE_MENU_ID = "use-image-in-cooks";
-const TEXT_MENU_ID = "use-text-in-cooks";
- 
-// fixed the bug with double window
+function processTextSelection(selectedText) {
+  return chrome.storage.local.set({
+    selectedText,
+    selectedImageUrl: "",
+    recipeResponse: null
+  }).then(() => {
+    const clientReady = globalThis.geminiClientReady;
+    if (!clientReady) {
+      throw new Error("Gemini text detection did not initialize. Check the service worker console.");
+    }
+    return clientReady.then((detectDishFromText) => {
+      if (typeof detectDishFromText !== "function") {
+        throw new Error("Gemini text detection failed to load. Check config.js and the service worker console.");
+      }
+      return detectDishFromText(selectedText);
+    });
+  }).then((result) => chrome.storage.local.set({ recipeResponse: result })
+    .then(() => result))
+    .catch((error) => {
+      console.error("Could not process the selected text:", error);
+      const recipeResponse = {
+        ok: false,
+        error: {
+          code: "client_unavailable",
+          message: error.message || "Could not process the selected text."
+        }
+      };
+      return chrome.storage.local.set({ recipeResponse })
+        .then(() => recipeResponse);
+    });
+}
+
+// Rebuild the image and text context-menu options after installation or update.
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll(() => {
     if (chrome.runtime.lastError) {
@@ -38,8 +68,8 @@ chrome.runtime.onInstalled.addListener(() => {
     );
   });
 });
- 
-// images duplicated in the cooks pop-up card
+
+// Process selected text directly; forward image selections through the content script.
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId !== IMAGE_MENU_ID && info.menuItemId !== TEXT_MENU_ID) {
     return;
@@ -80,6 +110,12 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     }
  
     selectionType = "text";
+    processTextSelection(fallbackText)
+      .then(() => chrome.action.openPopup({ windowId: tab.windowId }))
+      .catch((error) => {
+        console.error("Could not save the selected text or open the recipe popup:", error);
+      });
+    return;
   }
  
   if (typeof tab.id !== "number") {
@@ -242,49 +278,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
  
     const selectedText = text.trim();
-    chrome.storage.local.set({
-      selectedText,
-      selectedImageUrl: "",
-      recipeResponse: null
-    }).then(() => {
-      const clientReady = globalThis.geminiClientReady;
-      if (!clientReady) {
-        throw new Error("Gemini text detection did not initialize. Check the service worker console.");
-      }
-      return clientReady.then((detectDishFromText) => {
-        if (typeof detectDishFromText !== "function") {
-          throw new Error("Gemini text detection failed to load. Check config.js and the service worker console.");
-        }
-        return detectDishFromText(selectedText);
-      });
-    }).then((result) => chrome.storage.local.set({ recipeResponse: result })
-      .then(() => result))
+    processTextSelection(selectedText)
     .then((result) => {
       sendResponse({
         type: "COOKS_RECIPE_RESULT",
         payload: result
       });
     }).catch((error) => {
-      console.error("Could not process the selected text:", error);
-      const recipeResponse = {
-        ok: false,
-        error: {
-          code: "client_unavailable",
-          message: error.message || "Could not process the selected text."
-        }
-      };
-      chrome.storage.local.set({ recipeResponse })
-        .then(() => sendResponse({
-          type: "COOKS_ERROR",
-          payload: recipeResponse
-        }))
-        .catch((storageError) => {
-          console.error("Could not save the text-processing error:", storageError);
-          sendResponse({
-            type: "COOKS_ERROR",
-            payload: { message: "Could not process the selection or save its error." }
-          });
-        });
+      console.error("Could not save the selected-text error:", error);
+      sendResponse({
+        type: "COOKS_ERROR",
+        payload: { message: "Could not process the selection or save its error." }
+      });
     });
     return true;
   }
