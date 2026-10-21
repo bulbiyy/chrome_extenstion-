@@ -7,9 +7,21 @@
     "default_popup": "popup.html",
     "default_title": "Cooks"
   },
-  "host_permissions": [
-    "https://generativelanguage.googleapis.com/*"
+  "permissions": [
+    "identity"
   ],
+  "host_permissions": [
+    "https://generativelanguage.googleapis.com/*",
+    "https://www.googleapis.com/*"
+  ],
+  "oauth2": {
+    "client_id": "10046578307-01qocac83k8ecfuosknsa1ft04tj5s6v.apps.googleusercontent.com",
+    "scopes": [
+      "openid",
+      "email",
+      "profile"
+    ]
+  },
   "background": {
     "service_worker": "service-worker.js",
     "type": "module"
