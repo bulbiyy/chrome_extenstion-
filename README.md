@@ -1,7 +1,6 @@
-# Info for PBI 4 (complete)
+# Info about Gemini API and Google OAuth
 
-This branch combines the PBI 1 Chrome popup skeleton with the PBI 4 Gemini
-text input and API response component.
+# Gemini API Integration (PBI 4)
 
 The background client exports `detectDishFromText(selectedText)`. When a text selection is chosen from the context menu, `content.js` packages it and sends it to the service worker. `background.js` calls the Gemini client, stores the result, and replies through the content script. The popup tester reads the stored result and displays the dish name, ingredients, and steps.
 
@@ -14,10 +13,7 @@ The client uses gemini-3.8-flash (https://ai.google.dev/gemini-api/docs/models/g
 
 1. Create a Gemini API key in Google AI Studio.
 2. Copy config.example.js to config.js in the project root.
-3. Replace YOUR_GEMINI_API_KEY in config.js with your key.
-
-(config.js is gitignored. Do not commit it.)
-
+3. Replace YOUR_GEMINI_API_KEY in config.js with your key. (gitignore, do not commit)
 4. Open chrome://extensions and enable Developer mode.
 5. Select Load unpacked and choose this project folder.
 6. On the Cooks extension card, open the service worker's Inspect console if you want to test the Gemini client directly.
@@ -36,7 +32,6 @@ The client uses gemini-3.8-flash (https://ai.google.dev/gemini-api/docs/models/g
    // await detectDishFromText("");
    // Expected output: { ok: false, error: { code: "bad_input", ... } }
 
-To verify the API error path, temporarily replace the key in config.js with an invalid value, reload the extension, and call await detectDishFromText("pad thai"). A non-2xx API response returns { ok: false, error: { code: "api_error", status: <HTTP status>, ... } }.Restore the valid key and reload afterward.
 
 The client has a 60-second request timeout. It never logs the API key or the
 selected text, and returns custom results for:
