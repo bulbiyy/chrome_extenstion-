@@ -12,7 +12,7 @@
 
     <!-- Header -->
     <div class="topline">
-      <span class="brand-mark" aria-hidden="true">d.</span>
+      <span class="brand-mark" aria-hidden="true">c.</span>
       <span class="brand-name">Cooks</span>
 
       <div class="header-actions">
@@ -61,6 +61,8 @@
       </p>
 
       <h1 id="dish-name">Creamy Tomato Pasta</h1>
+
+      <p class="recipe-status" id="recipe-status" role="status" aria-live="polite" hidden></p>
 
       <p class="description" id="dish-description">
         A cozy tomato pasta with garlic, basil, and a silky sauce.
@@ -130,6 +132,9 @@
   </main>
 
   <!-- Popup JavaScript -->
+  <script src="render-recipe.js"></script>
+  <script src="selection-data.js"></script>
+  <script src="user-session.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>
