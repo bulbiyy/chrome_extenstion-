@@ -1,8 +1,29 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createGeminiClient, DISH_CONFIDENCE_THRESHOLD } from "../src/background/geminiClient.js";
+import { MAX_IMAGE_DIMENSION, MAX_IMAGE_PIXELS, validateImageDimensions } from "../src/shared/imageValidation.js";
 
 const API_KEY = "test-api-key";
+
+test("accepts image dimensions within the configured limits", () => {
+  assert.deepEqual(validateImageDimensions(1920, 1080), { valid: true });
+  assert.deepEqual(
+    validateImageDimensions(MAX_IMAGE_DIMENSION, 1),
+    { valid: true }
+  );
+});
+
+test("rejects invalid or unverifiable image dimensions", () => {
+  for (const [width, height] of [[0, 100], [-1, 100], [100, 0], [1.5, 100], [null, 100]]) {
+    assert.equal(validateImageDimensions(width, height).valid, false);
+  }
+});
+
+test("rejects images exceeding a dimension or total pixel limit", () => {
+  assert.equal(validateImageDimensions(MAX_IMAGE_DIMENSION + 1, 1).valid, false);
+  assert.equal(validateImageDimensions(5000, 8001).valid, false);
+  assert.equal(validateImageDimensions(MAX_IMAGE_PIXELS + 1, 1).valid, false);
+});
 
 function createGeminiResponse(data) {
   return {

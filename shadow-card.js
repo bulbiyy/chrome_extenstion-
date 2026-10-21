@@ -1,15 +1,12 @@
-// PBI 20: show the Cooks card on top of the current page inside a Shadow DOM,
-// so the site's CSS can't break the card and our CSS can't leak into the site.
-// Content script. Needs render-recipe.js loaded first (see manifest.json).
-
 (() => {
   if (globalThis.__cooksCardLoaded) return;
   globalThis.__cooksCardLoaded = true;
-
+ 
   const HOST_ID = "cooks-card-host";
   const TEST_IMAGE = "assets/pasta.svg";
   let host = null;
-
+  let shadow = null;
+ 
   // Same markup as popup.html, wrapped in .cooks-shell (no <body> in a shadow tree).
   const CARD_HTML = `
     <div class="cooks-shell">
@@ -59,43 +56,56 @@
         </section>
       </main>
     </div>`;
-
-  // `data` can be a Gemini result ({ isDish, dishName, recipe }) or the demo shape.
-  // `options.imageUrl` optionally replaces the bundled test image.
+ 
   function openCard(data = CooksRender.demoRecipe, options = {}) {
     closeCard();
-
+ 
     host = document.createElement("div");
     host.id = HOST_ID;
-    // Inline styles on the host only: pin it above the page.
     host.style.cssText =
       "all: initial; position: fixed; top: 16px; right: 16px; " +
       "z-index: 2147483647; max-height: calc(100vh - 32px); overflow-y: auto;";
-
-    const shadow = host.attachShadow({ mode: "open" });
-
+ 
+    shadow = host.attachShadow({ mode: "open" });
+ 
     const stylesheet = document.createElement("link");
     stylesheet.rel = "stylesheet";
     stylesheet.href = chrome.runtime.getURL("popup.css");
     shadow.append(stylesheet);
-
+ 
     const wrapper = document.createElement("div");
-    wrapper.innerHTML = CARD_HTML; // static, trusted markup (no page data)
+    wrapper.innerHTML = CARD_HTML; 
     shadow.append(wrapper);
-
+ 
     document.documentElement.append(host);
-
-    CooksRender.renderRecipe(data, shadow); // render into the shadow root
+ 
+    if (data) CooksRender.renderRecipe(data, shadow); 
+    if (options.title) CooksRender.setText("dish-name", options.title, "", shadow);
+    setStatus(options.status);
     setImage(shadow, options.imageUrl);
+    enableDismiss();
   }
-
-  function setImage(shadow, imageUrl) {
-    const image = shadow.getElementById("dish-image");
-    const tag = shadow.getElementById("image-tag");
+ 
+  // re-render the open card with new data 
+  function updateCard(data) {
+    if (host && shadow) CooksRender.renderRecipe(data, shadow);
+  }
+ 
+  // show the status line inside the card.
+  function setStatus(message) {
+    const status = shadow?.getElementById("recipe-status");
+    if (!status) return;
+    status.hidden = !message;
+    status.textContent = message || "";
+  }
+ 
+  function setImage(root, imageUrl) {
+    const image = root.getElementById("dish-image");
+    const tag = root.getElementById("image-tag");
     const testUrl = chrome.runtime.getURL(TEST_IMAGE);
     if (!image) return;
-
-    // If a selected image can't load (blocked/hotlink-protected), use the test image.
+ 
+    // if a selected image can't load use test image.
     image.addEventListener("error", () => {
       if (image.src !== testUrl) {
         image.src = testUrl;
@@ -103,7 +113,7 @@
         if (tag) tag.textContent = "RECIPE IDEA";
       }
     });
-
+ 
     if (imageUrl) {
       image.src = imageUrl;
       image.alt = "Image selected from a webpage";
@@ -113,20 +123,50 @@
       image.alt = "Illustration of a bowl of tomato pasta";
     }
   }
-
+ 
   function closeCard() {
+    disableDismiss();
     if (host) host.remove();
     host = null;
+    shadow = null;
+  }
+ 
+  // outside-click dismiss
+  function onPointerDownOutside(event) {
+    if (host && !event.composedPath().includes(host)) {
+      closeCard();
+    }
+  }
+ 
+  function onKeyDown(event) {
+    if (event.key === "Escape") closeCard();
+  }
+ 
+
+  function onWindowBlur() {
+    setTimeout(() => {
+      if (host && document.activeElement?.tagName === "IFRAME") closeCard();
+    }, 0);
+  }
+ 
+  // listeners exist only while a card is open.
+  function enableDismiss() {
+    document.addEventListener("pointerdown", onPointerDownOutside, true);
+    document.addEventListener("keydown", onKeyDown, true);
+    window.addEventListener("blur", onWindowBlur);
+  }
+ 
+  function disableDismiss() {
+    document.removeEventListener("pointerdown", onPointerDownOutside, true);
+    document.removeEventListener("keydown", onKeyDown, true);
+    window.removeEventListener("blur", onWindowBlur);
   }
 
-  // TEMPORARY test trigger for PBI 20: Ctrl+Shift+Y toggles the demo card.
-  // PBI 13 (lookup button) will call __cooksCard.open() instead.
-  document.addEventListener("keydown", (event) => {
-    if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "y") {
-      host ? closeCard() : openCard();
-    }
-  });
-
-  // Same content-script world as content.js, so later PBIs can call these.
-  globalThis.__cooksCard = { open: openCard, close: closeCard, isOpen: () => host !== null };
+  globalThis.__cooksCard = {
+    open: openCard,
+    update: updateCard,
+    setStatus,
+    close: closeCard,
+    isOpen: () => host !== null
+  };
 })();
