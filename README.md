@@ -7,7 +7,7 @@ The background client exports `detectDishFromText(selectedText)`. When a text se
 
 Image selections are captured and displayed by the popup, but the Gemini client currently supports text only. Image identification needs a separate multimodal request implementation.
 
-Image selection packages include the image element's intrinsic pixel width and height. The background rejects images whose dimensions cannot be verified, exceed 8,192 pixels on either side, or exceed 40 megapixels total. This validates pixel dimensions only; the current package sends an image URL, so it does not measure the image file's byte size.
+For image selections, the background reads the clicked image element's intrinsic dimensions in the frame where it was clicked and includes its width, height, and alt text in the request package. It rejects images whose dimensions cannot be verified, exceed 8,192 pixels on either side, or exceed 40 megapixels total. This validates pixel dimensions only; the current package sends an image URL, so it does not measure the image file's byte size.
 
 The Gemini client is created in `service-worker.js` with the local API key. Its `createGeminiClient` factory also accepts an injected `fetchImpl`, allowing tests to exercise the response handling without making live API calls.
 The client uses gemini-3.8-flash (https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash) and the Gemini [generateContent API] (https://ai.google.dev/api/generate-content).
