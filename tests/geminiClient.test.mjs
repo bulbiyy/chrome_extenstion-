@@ -1,8 +1,29 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createGeminiClient, DISH_CONFIDENCE_THRESHOLD } from "../src/background/geminiClient.js";
+import { MAX_IMAGE_DIMENSION, MAX_IMAGE_PIXELS, validateImageDimensions } from "../src/shared/imageValidation.js";
 
 const API_KEY = "test-api-key";
+
+test("accepts image dimensions within the configured limits", () => {
+  assert.deepEqual(validateImageDimensions(1920, 1080), { valid: true });
+  assert.deepEqual(
+    validateImageDimensions(MAX_IMAGE_DIMENSION, 1),
+    { valid: true }
+  );
+});
+
+test("rejects invalid or unverifiable image dimensions", () => {
+  for (const [width, height] of [[0, 100], [-1, 100], [100, 0], [1.5, 100], [null, 100]]) {
+    assert.equal(validateImageDimensions(width, height).valid, false);
+  }
+});
+
+test("rejects images exceeding a dimension or total pixel limit", () => {
+  assert.equal(validateImageDimensions(MAX_IMAGE_DIMENSION + 1, 1).valid, false);
+  assert.equal(validateImageDimensions(5000, 8001).valid, false);
+  assert.equal(validateImageDimensions(MAX_IMAGE_PIXELS + 1, 1).valid, false);
+});
 
 function createGeminiResponse(data) {
   return {
@@ -27,7 +48,7 @@ function mockSuccessfulFetch(data, requests = []) {
   };
 }
 
-test("identifies a dish and returns its recipe", async () => {
+test("detects a dish from selected text and returns recipe data", async () => {
   const dish = {
     isDish: true,
     confidence: 0.94,
@@ -56,7 +77,7 @@ test("identifies a dish and returns its recipe", async () => {
   );
 });
 
-test("returns a valid non-dish classification without a recipe", async () => {
+test("handles selected text that is not a dish", async () => {
   const detectDishFromText = createGeminiClient({
     apiKey: API_KEY,
     fetchImpl: mockSuccessfulFetch({
@@ -82,7 +103,7 @@ test("returns a valid non-dish classification without a recipe", async () => {
   });
 });
 
-test("rejects a low-confidence dish classification", async () => {
+test("handles low-confidence dish identification", async () => {
   const detectDishFromText = createGeminiClient({
     apiKey: API_KEY,
     fetchImpl: mockSuccessfulFetch({
@@ -105,7 +126,31 @@ test("rejects a low-confidence dish classification", async () => {
   assert.equal(result.data.recipe, null);
 });
 
-test("rejects blank text without calling Gemini", async () => {
+test("accepts a dish classification at the confidence threshold", async () => {
+  const detectDishFromText = createGeminiClient({
+    apiKey: API_KEY,
+    fetchImpl: mockSuccessfulFetch({
+      isDish: true,
+      confidence: DISH_CONFIDENCE_THRESHOLD,
+      dishName: "Pad Thai",
+      language: "en",
+      recipe: { ingredients: ["rice noodles"], steps: ["Stir-fry."] },
+    }),
+  });
+
+  const result = await detectDishFromText("Pad Thai");
+
+  assert.equal(result.ok, true);
+  assert.equal(result.data.isDish, true);
+  assert.equal(result.data.confidence, DISH_CONFIDENCE_THRESHOLD);
+  assert.equal(result.data.dishName, "Pad Thai");
+  assert.deepEqual(result.data.recipe, {
+    ingredients: ["rice noodles"],
+    steps: ["Stir-fry."],
+  });
+});
+
+test("rejects blank text input", async () => {
   let requestCount = 0;
   const detectDishFromText = createGeminiClient({
     apiKey: API_KEY,
@@ -122,7 +167,7 @@ test("rejects blank text without calling Gemini", async () => {
   assert.equal(requestCount, 0);
 });
 
-test("returns a bad-response error for malformed Gemini recipe data", async () => {
+test("handles malformed recipe data from Gemini", async () => {
   const detectDishFromText = createGeminiClient({
     apiKey: API_KEY,
     fetchImpl: async () => ({
@@ -150,7 +195,7 @@ test("returns a bad-response error for malformed Gemini recipe data", async () =
   assert.equal(result.error.code, "bad_response");
 });
 
-test("returns the HTTP status when Gemini rejects the request", async () => {
+test("handles Gemini API HTTP errors", async () => {
   const detectDishFromText = createGeminiClient({
     apiKey: API_KEY,
     fetchImpl: async () => ({ ok: false, status: 403 }),
@@ -163,7 +208,7 @@ test("returns the HTTP status when Gemini rejects the request", async () => {
   assert.equal(result.error.status, 403);
 });
 
-test("returns a network error when fetch rejects", async () => {
+test("handles network failure", async () => {
   const detectDishFromText = createGeminiClient({
     apiKey: API_KEY,
     fetchImpl: async () => {
@@ -177,7 +222,7 @@ test("returns a network error when fetch rejects", async () => {
   assert.equal(result.error.code, "network");
 });
 
-test("returns a timeout error when Gemini does not respond in time", async () => {
+test("handles request timeout", async () => {
   const detectDishFromText = createGeminiClient({
     apiKey: API_KEY,
     requestTimeoutMs: 5,
