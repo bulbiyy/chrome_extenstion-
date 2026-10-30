@@ -1,4 +1,4 @@
-const MODEL = "gemini-3.8-flash";
+const MODEL = "gemini-3.1-flash-lite";
 const REQUEST_TIMEOUT_MS = 60_000;
 const API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 export const DISH_CONFIDENCE_THRESHOLD = 0.75;
