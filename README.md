@@ -9,7 +9,7 @@ Image selections are captured and displayed by the popup, but the Gemini client 
 For image selections, the background reads the clicked image element's intrinsic dimensions in the frame where it was clicked and includes its width, height, and alt text in the request package. It rejects images whose dimensions cannot be verified, exceed 8,192 pixels on either side, or exceed 40 megapixels total. This validates pixel dimensions only; the current package sends an image URL, so it does not measure the image file's byte size.
 
 The Gemini client is created in `service-worker.js` with the local API key. Its `createGeminiClient` factory also accepts an injected `fetchImpl`, allowing tests to exercise the response handling without making live API calls.
-The client uses gemini-3.8-flash (https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash) and the Gemini [generateContent API] (https://ai.google.dev/api/generate-content).
+The client uses Gemini 3.1 Flash-Lite (`gemini-3.1-flash-lite`, https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-lite) with the Gemini [generateContent API](https://ai.google.dev/api/generate-content).
 
 1. Create a Gemini API key in Google AI Studio.
 2. Copy config.example.js to config.js in the project root.
