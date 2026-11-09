@@ -35,7 +35,7 @@
       response = await chrome.runtime.sendMessage(request);
     } catch (error) {
       if (id === lookupId && card.isOpen()) {
-        card.setStatus("Could not reach Cooks. Reload this page and try again.");
+        card.showMessage("Could not reach Cooks. Reload this page and try again.");
       }
       return;
     }
@@ -46,7 +46,7 @@
     if (response?.type === "COOKS_RECIPE_RESULT" && result?.ok) {
       card.update(result.data); // shows the recipe
     } else {
-      card.setStatus(describeError(result));
+      card.showMessage(describeError(result));
     }
   }
  

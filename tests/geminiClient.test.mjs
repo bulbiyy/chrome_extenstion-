@@ -195,6 +195,60 @@ test("handles malformed recipe data from Gemini", async () => {
   assert.equal(result.error.code, "bad_response");
 });
 
+test("rejects incoherent non-dish data from Gemini", async () => {
+  const detectDishFromText = createGeminiClient({
+    apiKey: API_KEY,
+    fetchImpl: mockSuccessfulFetch({
+      isDish: false,
+      confidence: 0.98,
+      dishName: "Unexpected dish name",
+      language: "en",
+      recipe: null,
+    }),
+  });
+
+  const result = await detectDishFromText("a sunny day");
+
+  assert.equal(result.ok, false);
+  assert.equal(result.error.code, "bad_response");
+});
+
+test("rejects recipes without a usable dish name or cooking steps", async () => {
+  for (const data of [
+    {
+      isDish: true,
+      confidence: 0.9,
+      dishName: "  ",
+      language: "en",
+      recipe: { ingredients: ["water"], steps: ["Boil."] },
+    },
+    {
+      isDish: true,
+      confidence: 0.9,
+      dishName: "Soup",
+      language: "en",
+      recipe: { ingredients: ["water"], steps: ["  "] },
+    },
+    {
+      isDish: true,
+      confidence: 1.1,
+      dishName: "Soup",
+      language: "en",
+      recipe: { ingredients: ["water"], steps: ["Boil."] },
+    },
+  ]) {
+    const detectDishFromText = createGeminiClient({
+      apiKey: API_KEY,
+      fetchImpl: mockSuccessfulFetch(data),
+    });
+
+    const result = await detectDishFromText("soup");
+
+    assert.equal(result.ok, false);
+    assert.equal(result.error.code, "bad_response");
+  }
+});
+
 test("handles Gemini API HTTP errors", async () => {
   const detectDishFromText = createGeminiClient({
     apiKey: API_KEY,

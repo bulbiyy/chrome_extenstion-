@@ -76,6 +76,20 @@ function parseGeminiResponse(responseText) {
     .replace(/^```[a-zA-Z0-9_-]*\s*/, "")
     .replace(/\s*```$/, "");
   const data = JSON.parse(jsonText);
+  const validRecipe =
+    data?.recipe !== null &&
+    typeof data?.recipe === "object" &&
+    !Array.isArray(data.recipe) &&
+    Array.isArray(data.recipe.ingredients) &&
+    data.recipe.ingredients.length > 0 &&
+    data.recipe.ingredients.every(
+      (item) => typeof item === "string" && item.trim() !== "",
+    ) &&
+    Array.isArray(data.recipe.steps) &&
+    data.recipe.steps.length > 0 &&
+    data.recipe.steps.every(
+      (step) => typeof step === "string" && step.trim() !== "",
+    );
 
   if (
     data === null ||
@@ -84,16 +98,15 @@ function parseGeminiResponse(responseText) {
     typeof data.isDish !== "boolean" ||
     typeof data.confidence !== "number" ||
     !Number.isFinite(data.confidence) ||
+    data.confidence < 0 ||
+    data.confidence > 1 ||
     typeof data.language !== "string" ||
-    !(typeof data.dishName === "string" || data.dishName === null) ||
-    !(
-      data.recipe === null ||
-      (data.recipe !== null &&
-        Array.isArray(data.recipe?.ingredients) &&
-        data.recipe.ingredients.every((item) => typeof item === "string") &&
-        Array.isArray(data.recipe?.steps) &&
-        data.recipe.steps.every((step) => typeof step === "string"))
-    )
+    data.language.trim() === "" ||
+    (data.isDish &&
+      (typeof data.dishName !== "string" ||
+        data.dishName.trim() === "" ||
+        !validRecipe)) ||
+    (!data.isDish && (data.dishName !== null || data.recipe !== null))
   ) {
     return null;
   }

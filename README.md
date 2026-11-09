@@ -47,6 +47,8 @@ The business logic classifies a result as a dish only when Gemini reports
 as `isDish: false` with a null dish name and recipe. The application receives
 the classification, confidence, dish name, and recipe in the
 `COOKS_RECIPE_RESULT` message and the stored `recipeResponse`.
+The popup and in-page card show a clear no-dish or unavailable-result message
+and hide recipe details for non-dish, malformed, or failed responses.
 
 The popup exposes `CooksUserSession.signIn(profile)`,
 `CooksUserSession.getCurrentUser()`, and `CooksUserSession.signOut()` for the
