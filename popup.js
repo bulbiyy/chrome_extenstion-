@@ -87,7 +87,21 @@ async function loadPopupImage() {
  
 loadRecipeResponse();
 loadPopupImage();
- 
+
+const recipeFiles = document.getElementById("recipe-files");
+const fileSelectionStatus = document.getElementById("file-selection-status");
+recipeFiles?.addEventListener("change", () => {
+  if (!fileSelectionStatus) {
+    return;
+  }
+
+  const files = Array.from(recipeFiles.files || []);
+  fileSelectionStatus.hidden = files.length === 0;
+  fileSelectionStatus.textContent = files.length
+    ? `Selected locally (not uploaded): ${files.map((file) => file.name).join(", ")}`
+    : "";
+});
+
 // The demo recipe and its documented shape now live in render-recipe.js
 // as CooksRender.demoRecipe.
  
