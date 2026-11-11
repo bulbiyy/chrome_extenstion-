@@ -92,17 +92,58 @@ const recipeFiles = document.getElementById("recipe-files");
 const fileSelectionStatus = document.getElementById("file-selection-status");
 const fileUploadButton = document.getElementById("file-upload-button");
 let fileDragDepth = 0;
+const supportedImageTypes = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif"
+]);
+const supportedImageExtensions = new Set([
+  "jpg",
+  "jpeg",
+  "png",
+  "webp",
+  "heic",
+  "heif"
+]);
+
+function isSupportedImage(file) {
+  const mimeType = file.type.toLowerCase();
+  if (mimeType) {
+    return supportedImageTypes.has(mimeType);
+  }
+
+  const extension = file.name.split(".").pop()?.toLowerCase();
+  return Boolean(extension && supportedImageExtensions.has(extension));
+}
 
 recipeFiles?.addEventListener("change", () => {
-  if (!fileSelectionStatus) {
+  if (!recipeFiles || !fileSelectionStatus) {
     return;
   }
 
   const files = Array.from(recipeFiles.files || []);
-  fileSelectionStatus.hidden = files.length === 0;
-  fileSelectionStatus.textContent = files.length
-    ? `Selected locally (not uploaded): ${files.map((file) => file.name).join(", ")}`
-    : "";
+  const acceptedFiles = files.filter(isSupportedImage);
+  const rejectedFiles = files.filter((file) => !isSupportedImage(file));
+  const acceptedFileList = new DataTransfer();
+  acceptedFiles.forEach((file) => acceptedFileList.items.add(file));
+  recipeFiles.files = acceptedFileList.files;
+
+  const messages = [];
+  if (acceptedFiles.length) {
+    messages.push(
+      `Selected locally (not uploaded): ${acceptedFiles.map((file) => file.name).join(", ")}`
+    );
+  }
+  if (rejectedFiles.length) {
+    messages.push(
+      `Rejected unsupported file types: ${rejectedFiles.map((file) => file.name).join(", ")}. Choose JPEG, PNG, WebP, HEIC, or HEIF images.`
+    );
+  }
+
+  fileSelectionStatus.hidden = messages.length === 0;
+  fileSelectionStatus.textContent = messages.join(" ");
 });
 
 function containsDraggedFiles(event) {
