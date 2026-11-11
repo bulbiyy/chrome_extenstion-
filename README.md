@@ -4,9 +4,7 @@
 
 The background client exports `detectDishFromText(selectedText)`. When a text selection is chosen from the context menu, `content.js` packages it and sends it to the service worker. `background.js` calls the Gemini client, stores the result, and replies through the content script. The popup tester reads the stored result and displays the dish name, ingredients, and steps.
 
-Image selections are captured and displayed by the popup, but the Gemini client currently supports text only. Image identification needs a separate multimodal request implementation.
-
-For image selections, the background reads the clicked image element's intrinsic dimensions in the frame where it was clicked and includes its width, height, and alt text in the request package. It rejects images whose dimensions cannot be verified, exceed 8,192 pixels on either side, or exceed 40 megapixels total. This validates pixel dimensions only; the current package sends an image URL, so it does not measure the image file's byte size.
+Image selections are captured and displayed by the popup. The Gemini client supports text and image requests and returns the same `isDish/confidence/dishName/language/recipe` payload shape for both sources. For image selections, the background reads the clicked image element's intrinsic dimensions in the frame where it was clicked and includes its width, height, and alt text in the request package. It rejects images whose dimensions cannot be verified, exceed 8,192 pixels on either side, or exceed 40 megapixels total. This validates pixel dimensions only; the client downloads the image URL and converts it to a Gemini-compatible inline payload before the request is sent.
 
 The Gemini client is created in `service-worker.js` with the local API key. Its `createGeminiClient` factory also accepts an injected `fetchImpl`, allowing tests to exercise the response handling without making live API calls.
 The client uses Gemini 3.1 Flash-Lite (`gemini-3.1-flash-lite`, https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-lite) with the Gemini [generateContent API](https://ai.google.dev/api/generate-content).
@@ -47,6 +45,8 @@ The business logic classifies a result as a dish only when Gemini reports
 as `isDish: false` with a null dish name and recipe. The application receives
 the classification, confidence, dish name, and recipe in the
 `COOKS_RECIPE_RESULT` message and the stored `recipeResponse`.
+The popup and in-page card show a clear no-dish or unavailable-result message
+and hide recipe details for non-dish, malformed, or failed responses.
 
 The popup exposes `CooksUserSession.signIn(profile)`,
 `CooksUserSession.getCurrentUser()`, and `CooksUserSession.signOut()` for the

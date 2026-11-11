@@ -30,16 +30,16 @@
           <h1 id="dish-name"></h1>
           <p class="recipe-status" id="recipe-status" role="status" aria-live="polite" hidden></p>
           <p class="description" id="dish-description"></p>
-          <div class="meta-row" aria-label="Recipe details">
+          <div class="meta-row" id="recipe-details" aria-label="Recipe details">
             <span><span aria-hidden="true">◷</span> <strong id="cook-time"></strong></span>
             <span><span aria-hidden="true">♧</span> <strong id="servings"></strong></span>
             <span class="difficulty" id="difficulty"></span>
           </div>
-          <div class="section-heading">
+          <div class="section-heading" id="ingredients-heading">
             <h2>What you'll need</h2><span class="small-note">INGREDIENTS</span>
           </div>
           <ul id="ingredients" class="ingredient-list"></ul>
-          <div class="section-heading steps-heading">
+          <div class="section-heading steps-heading" id="steps-heading">
             <h2>Make it</h2><span class="small-note">IN A FEW STEPS</span>
           </div>
           <ol id="instructions" class="steps-list"></ol>
@@ -48,11 +48,11 @@
             <span><strong>Watch a recipe video</strong><small>YouTube · cooking walkthroughs</small></span>
             <span class="link-arrow" aria-hidden="true">↗</span>
           </a>
-          <div class="references-block">
+          <div class="references-block" id="references-block">
             <h2>References</h2>
             <div id="references" class="reference-list"></div>
           </div>
-          <p class="footer-note">A starting point for your next meal ✳</p>
+          <p class="footer-note" id="footer-note">A starting point for your next meal ✳</p>
         </section>
       </main>
     </div>`;
@@ -97,6 +97,10 @@
     if (!status) return;
     status.hidden = !message;
     status.textContent = message || "";
+  }
+
+  function showMessage(message) {
+    if (shadow) CooksRender.renderMessage(message, "Recipe unavailable", shadow);
   }
  
   function setImage(root, imageUrl) {
@@ -166,6 +170,7 @@
     open: openCard,
     update: updateCard,
     setStatus,
+    showMessage,
     close: closeCard,
     isOpen: () => host !== null
   };
