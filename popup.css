@@ -214,6 +214,13 @@ h1 {
   border-color: #d9a293;
 }
 
+.file-upload-button.is-dragging {
+  background: #fff0e8;
+  border-color: var(--accent);
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
+}
+
 .file-upload-button:focus-within {
   outline: 2px solid var(--accent);
   outline-offset: 2px;

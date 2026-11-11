@@ -90,6 +90,9 @@ loadPopupImage();
 
 const recipeFiles = document.getElementById("recipe-files");
 const fileSelectionStatus = document.getElementById("file-selection-status");
+const fileUploadButton = document.getElementById("file-upload-button");
+let fileDragDepth = 0;
+
 recipeFiles?.addEventListener("change", () => {
   if (!fileSelectionStatus) {
     return;
@@ -100,6 +103,59 @@ recipeFiles?.addEventListener("change", () => {
   fileSelectionStatus.textContent = files.length
     ? `Selected locally (not uploaded): ${files.map((file) => file.name).join(", ")}`
     : "";
+});
+
+function containsDraggedFiles(event) {
+  return Array.from(event.dataTransfer?.types || []).includes("Files");
+}
+
+fileUploadButton?.addEventListener("dragenter", (event) => {
+  if (!containsDraggedFiles(event)) {
+    return;
+  }
+
+  event.preventDefault();
+  fileDragDepth += 1;
+  fileUploadButton.classList.add("is-dragging");
+});
+
+fileUploadButton?.addEventListener("dragover", (event) => {
+  if (!containsDraggedFiles(event)) {
+    return;
+  }
+
+  event.preventDefault();
+  event.dataTransfer.dropEffect = "copy";
+});
+
+fileUploadButton?.addEventListener("dragleave", (event) => {
+  if (!containsDraggedFiles(event)) {
+    return;
+  }
+
+  fileDragDepth = Math.max(0, fileDragDepth - 1);
+  if (fileDragDepth === 0) {
+    fileUploadButton.classList.remove("is-dragging");
+  }
+});
+
+fileUploadButton?.addEventListener("drop", (event) => {
+  if (!containsDraggedFiles(event)) {
+    return;
+  }
+
+  event.preventDefault();
+  fileDragDepth = 0;
+  fileUploadButton.classList.remove("is-dragging");
+
+  if (!recipeFiles || !event.dataTransfer.files.length) {
+    return;
+  }
+
+  const droppedFiles = new DataTransfer();
+  Array.from(event.dataTransfer.files).forEach((file) => droppedFiles.items.add(file));
+  recipeFiles.files = droppedFiles.files;
+  recipeFiles.dispatchEvent(new Event("change", { bubbles: true }));
 });
 
 // The demo recipe and its documented shape now live in render-recipe.js
