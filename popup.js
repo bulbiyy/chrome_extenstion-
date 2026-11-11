@@ -19,19 +19,16 @@ async function loadRecipeResponse() {
     }
  
     if (!response.ok) {
-      const status = document.getElementById("recipe-status");
-      if (status) {
-        status.hidden = false;
-        const error = response.error || {};
-        const details = [
-          error.code,
-          Number.isInteger(error.status) ? `HTTP ${error.status}` : null
-        ].filter(Boolean);
-        status.textContent = [
-          error.message || "The recipe request could not be completed.",
-          details.length ? `(${details.join(", ")})` : ""
-        ].filter(Boolean).join(" ");
-      }
+      const error = response.error || {};
+      const details = [
+        error.code,
+        Number.isInteger(error.status) ? `HTTP ${error.status}` : null
+      ].filter(Boolean);
+      const message = [
+        error.message || "The recipe request could not be completed.",
+        details.length ? `(${details.join(", ")})` : ""
+      ].filter(Boolean).join(" ");
+      CooksRender.renderMessage(message);
       return;
     }
  

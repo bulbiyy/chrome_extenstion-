@@ -13,6 +13,10 @@
 * {
   box-sizing: border-box;
 }
+
+[hidden] {
+  display: none !important;
+}
  
 /*layout for the toolbar popup */
 body,
