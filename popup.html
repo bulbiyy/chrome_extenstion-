@@ -37,6 +37,23 @@
           title="Save recipe"
         >♧</button>
 
+        <label
+          class="file-upload-button"
+          id="file-upload-button"
+          title="Drop files here or choose files. Uploading to Gemini will be available in a future update."
+        >
+          <span aria-hidden="true">＋</span>
+          <span>Add files</span>
+          <input
+            class="file-input"
+            id="recipe-files"
+            type="file"
+            multiple
+            accept=".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif"
+            aria-label="Choose files or drop them here; uploading to Gemini will be available in a future update"
+          >
+        </label>
+
       </div>
     </div>
 
@@ -63,6 +80,7 @@
       <h1 id="dish-name">Creamy Tomato Pasta</h1>
 
       <p class="recipe-status" id="recipe-status" role="status" aria-live="polite" hidden></p>
+      <p class="file-selection-status" id="file-selection-status" role="status" aria-live="polite" hidden></p>
 
       <p class="description" id="dish-description">
         A cozy tomato pasta with garlic, basil, and a silky sauce.

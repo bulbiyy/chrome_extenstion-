@@ -84,7 +84,118 @@ async function loadPopupImage() {
  
 loadRecipeResponse();
 loadPopupImage();
- 
+
+const recipeFiles = document.getElementById("recipe-files");
+const fileSelectionStatus = document.getElementById("file-selection-status");
+const fileUploadButton = document.getElementById("file-upload-button");
+let fileDragDepth = 0;
+const supportedImageTypes = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif"
+]);
+const supportedImageExtensions = new Set([
+  "jpg",
+  "jpeg",
+  "png",
+  "webp",
+  "heic",
+  "heif"
+]);
+
+function isSupportedImage(file) {
+  const mimeType = file.type.toLowerCase();
+  if (mimeType) {
+    return supportedImageTypes.has(mimeType);
+  }
+
+  const extension = file.name.split(".").pop()?.toLowerCase();
+  return Boolean(extension && supportedImageExtensions.has(extension));
+}
+
+recipeFiles?.addEventListener("change", () => {
+  if (!recipeFiles || !fileSelectionStatus) {
+    return;
+  }
+
+  const files = Array.from(recipeFiles.files || []);
+  const acceptedFiles = files.filter(isSupportedImage);
+  const rejectedFiles = files.filter((file) => !isSupportedImage(file));
+  const acceptedFileList = new DataTransfer();
+  acceptedFiles.forEach((file) => acceptedFileList.items.add(file));
+  recipeFiles.files = acceptedFileList.files;
+
+  const messages = [];
+  if (acceptedFiles.length) {
+    messages.push(
+      `Selected locally (not uploaded): ${acceptedFiles.map((file) => file.name).join(", ")}`
+    );
+  }
+  if (rejectedFiles.length) {
+    messages.push(
+      `Rejected unsupported file types: ${rejectedFiles.map((file) => file.name).join(", ")}. Choose JPEG, PNG, WebP, HEIC, or HEIF images.`
+    );
+  }
+
+  fileSelectionStatus.hidden = messages.length === 0;
+  fileSelectionStatus.textContent = messages.join(" ");
+});
+
+function containsDraggedFiles(event) {
+  return Array.from(event.dataTransfer?.types || []).includes("Files");
+}
+
+fileUploadButton?.addEventListener("dragenter", (event) => {
+  if (!containsDraggedFiles(event)) {
+    return;
+  }
+
+  event.preventDefault();
+  fileDragDepth += 1;
+  fileUploadButton.classList.add("is-dragging");
+});
+
+fileUploadButton?.addEventListener("dragover", (event) => {
+  if (!containsDraggedFiles(event)) {
+    return;
+  }
+
+  event.preventDefault();
+  event.dataTransfer.dropEffect = "copy";
+});
+
+fileUploadButton?.addEventListener("dragleave", (event) => {
+  if (!containsDraggedFiles(event)) {
+    return;
+  }
+
+  fileDragDepth = Math.max(0, fileDragDepth - 1);
+  if (fileDragDepth === 0) {
+    fileUploadButton.classList.remove("is-dragging");
+  }
+});
+
+fileUploadButton?.addEventListener("drop", (event) => {
+  if (!containsDraggedFiles(event)) {
+    return;
+  }
+
+  event.preventDefault();
+  fileDragDepth = 0;
+  fileUploadButton.classList.remove("is-dragging");
+
+  if (!recipeFiles || !event.dataTransfer.files.length) {
+    return;
+  }
+
+  const droppedFiles = new DataTransfer();
+  Array.from(event.dataTransfer.files).forEach((file) => droppedFiles.items.add(file));
+  recipeFiles.files = droppedFiles.files;
+  recipeFiles.dispatchEvent(new Event("change", { bubbles: true }));
+});
+
 // The demo recipe and its documented shape now live in render-recipe.js
 // as CooksRender.demoRecipe.
  
