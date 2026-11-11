@@ -33,12 +33,28 @@ function processTextSelection(selectedText) {
     });
 }
 
-function processImageSelection({ imageUrl, altText = "", pageUrl = "", imageWidth, imageHeight }) {
+function processImageSelection({
+  imageUrl,
+  altText = "",
+  pageUrl = "",
+  imageWidth,
+  imageHeight,
+  imagePermissionGranted = true
+}) {
   return chrome.storage.local.set({
     selectedText: "",
     selectedImageUrl: imageUrl,
     recipeResponse: null
   }).then(() => {
+    if (!imagePermissionGranted) {
+      return {
+        ok: false,
+        error: {
+          code: "permission_denied",
+          message: "Allow Cooks to access this image's website to identify it."
+        }
+      };
+    }
     const clientReady = globalThis.geminiClientReady;
     if (!clientReady) {
       throw new Error("Gemini image detection did not initialize. Check the service worker console.");
@@ -116,6 +132,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   let selectionType;
   let fallbackText;
   let fallbackImageUrl;
+  let imagePermissionPromise = Promise.resolve(true);
   if (info.menuItemId === IMAGE_MENU_ID) {
     if (!info.srcUrl) {
       return;
@@ -133,9 +150,25 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       console.error("Cooks can only use images with HTTP or HTTPS URLs.");
       return;
     }
- 
+
     selectionType = "image";
     fallbackImageUrl = imageUrl.href;
+    if (chrome.permissions?.request) {
+      try {
+        imagePermissionPromise = chrome.permissions.request({
+          origins: [`${imageUrl.origin}/*`]
+        }).catch((error) => {
+          console.error("Could not request access to the selected image host:", error);
+          return false;
+        });
+      } catch (error) {
+        console.error("Could not request access to the selected image host:", error);
+        imagePermissionPromise = Promise.resolve(false);
+      }
+    } else {
+      console.error("The permissions API is unavailable; image access cannot be requested.");
+      imagePermissionPromise = Promise.resolve(false);
+    }
   } else {
     fallbackText = info.selectionText?.trim();
     if (!fallbackText) {
@@ -185,8 +218,8 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       }).then((results) => results[0]?.result || null)
     : Promise.resolve(null);
 
-  readImageDetails
-    .then((imageDetails) => chrome.scripting.executeScript({
+  Promise.all([readImageDetails, imagePermissionPromise])
+    .then(([imageDetails, imagePermissionGranted]) => chrome.scripting.executeScript({
       target: { tabId: tab.id, frameIds: [info.frameId ?? 0] },
       files: ["render-recipe.js", "shadow-card.js", "lookup.js"]
     }).then(() => chrome.tabs.sendMessage(tab.id, {
@@ -195,7 +228,8 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
         selectionType,
         fallbackText,
         fallbackImageUrl,
-        fallbackImageDetails: imageDetails
+        fallbackImageDetails: imageDetails,
+        imagePermissionGranted
       }
     }, { frameId: info.frameId ?? 0 })))
     .catch((error) => {
@@ -333,7 +367,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       altText,
       pageUrl,
       imageWidth,
-      imageHeight
+      imageHeight,
+      imagePermissionGranted
     } = message.payload || {};
     if (typeof imageUrl !== "string" || !imageUrl) {
       sendResponse({
@@ -343,33 +378,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return;
     }
 
-    const dimensions = validateImageDimensions(imageWidth, imageHeight);
-    if (!dimensions.valid) {
-      const recipeResponse = {
-        ok: false,
-        error: {
-          code: "invalid_image_size",
-          message: dimensions.message
-        }
-      };
-      chrome.storage.local.set({
-        selectedImageUrl: imageUrl,
-        selectedText: "",
-        recipeResponse
-      }).then(() => sendResponse({
-        type: "COOKS_ERROR",
-        payload: recipeResponse
-      })).catch((error) => {
-        console.error("Could not save the image validation error:", error);
-        sendResponse({
-          type: "COOKS_ERROR",
-          payload: { message: "The image is too large or its dimensions could not be checked." }
-        });
-      });
-      return true;
-    }
-
-    processImageSelection({ imageUrl, altText, pageUrl, imageWidth, imageHeight })
+    processImageSelection({
+      imageUrl,
+      altText,
+      pageUrl,
+      imageWidth,
+      imageHeight,
+      imagePermissionGranted
+    })
       .then((result) => {
         sendResponse({
           type: result?.ok ? "COOKS_RECIPE_RESULT" : "COOKS_ERROR",

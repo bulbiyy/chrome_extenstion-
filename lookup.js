@@ -67,7 +67,7 @@
     );
   }
  
-  function runImageLookup(imageUrl, imageDetails) {
+  function runImageLookup(imageUrl, imageDetails, imagePermissionGranted) {
     return ask(
       {
         type: "IDENTIFY_DISH_FROM_IMAGE",
@@ -76,7 +76,8 @@
           altText: imageDetails?.altText || "",
           imageWidth: imageDetails?.imageWidth,
           imageHeight: imageDetails?.imageHeight,
-          pageUrl: window.location.href
+          pageUrl: window.location.href,
+          imagePermissionGranted
         }
       },
       { imageUrl, title: "Selected image", status: "Looking at this image…" }
@@ -89,11 +90,14 @@
       selectionType,
       fallbackText,
       fallbackImageUrl,
-      fallbackImageDetails
+      fallbackImageDetails,
+      imagePermissionGranted
     } = message.payload || {};
- 
+
     if (selectionType === "image") {
-      if (fallbackImageUrl) runImageLookup(fallbackImageUrl, fallbackImageDetails);
+      if (fallbackImageUrl) {
+        runImageLookup(fallbackImageUrl, fallbackImageDetails, imagePermissionGranted);
+      }
       return;
     }
  

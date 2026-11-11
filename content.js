@@ -29,20 +29,26 @@ function createTextRequestPackage(text) {
 }
 
 // Package the selected image URL, optional alt text, and source page.
-function createImageRequestPackage(imageUrl, altText = "") {
+function createImageRequestPackage(imageUrl, altText = "", imagePermissionGranted = true) {
   return {
     type: "IDENTIFY_DISH_FROM_IMAGE",
     payload: {
       imageUrl,
       altText,
-      pageUrl: window.location.href
+      pageUrl: window.location.href,
+      imagePermissionGranted
     }
   };
 }
 
 // Choose the relevant selection, build its request package, and send it to background.
 function sendSelectionPackage(message) {
-  const { selectionType, fallbackText, fallbackImageUrl } = message.payload || {};
+  const {
+    selectionType,
+    fallbackText,
+    fallbackImageUrl,
+    imagePermissionGranted
+  } = message.payload || {};
   let requestPackage;
   const MAX_TEXT_LENGTH = 1000; // Define the maximum allowed length for selected text
 
@@ -62,7 +68,8 @@ function sendSelectionPackage(message) {
     }
     requestPackage = createImageRequestPackage(
       imageUrl,
-      contextImage?.altText || ""
+      contextImage?.altText || "",
+      imagePermissionGranted !== false
     );
   } else {
     throw new Error("Unsupported selection type.");

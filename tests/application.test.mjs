@@ -176,6 +176,27 @@ test("shows a clear no-dish result without leaving the demo recipe visible", asy
   assert.deepEqual(elements.get("instructions").children, []);
 });
 
+test("shows a distinct message when multiple dishes are identified", async () => {
+  const recipeResponse = {
+    ok: true,
+    data: {
+      isDish: false,
+      confidence: 0.98,
+      dishCount: 2,
+      dishName: null,
+      language: "en",
+      recipe: null,
+    },
+  };
+  const { context, elements } = createPopupHarness({ recipeResponse });
+  await loadPopupScripts(context);
+  await vm.runInContext("loadRecipeResponse()", context);
+
+  assert.equal(elements.get("dish-name").textContent, "Multiple dishes found");
+  assert.match(elements.get("recipe-status").textContent, /multiple dishes/);
+  assert.equal(elements.get("recipe-details").hidden, true);
+});
+
 test("shows malformed successful data as an incomplete result", async () => {
   const recipeResponse = {
     ok: true,
