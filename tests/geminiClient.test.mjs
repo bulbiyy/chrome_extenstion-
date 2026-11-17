@@ -77,6 +77,63 @@ test("detects a dish from selected text and returns recipe data", async () => {
   );
 });
 
+test("detects a dish from an image using the same response format as text", async () => {
+  const requests = [];
+  const detectDishFromImage = createGeminiClient({
+    apiKey: API_KEY,
+    fetchImpl: async (url, options) => {
+      requests.push({ url, options });
+      if (url === "https://example.test/pad-thai.jpg") {
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: (name) => name === "content-type" ? "image/jpeg" : null },
+          arrayBuffer: async () => new Uint8Array([255, 216, 255, 224]).buffer,
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(createGeminiResponse({
+          isDish: true,
+          confidence: 0.94,
+          dishName: "Pad Thai",
+          language: "en",
+          recipe: {
+            ingredients: ["200 g rice noodles", "1 egg"],
+            steps: ["Soak the noodles.", "Stir-fry and serve."],
+          },
+        })),
+      };
+    },
+  });
+
+  const result = await detectDishFromImage({
+    imageUrl: "https://example.test/pad-thai.jpg",
+    altText: "Pad thai bowl",
+    pageUrl: "https://example.test/recipe",
+    imageWidth: 800,
+    imageHeight: 600,
+  });
+
+  assert.deepEqual(result, {
+    ok: true,
+    data: {
+      isDish: true,
+      confidence: 0.94,
+      dishName: "Pad Thai",
+      language: "en",
+      recipe: {
+        ingredients: ["200 g rice noodles", "1 egg"],
+        steps: ["Soak the noodles.", "Stir-fry and serve."],
+      },
+    },
+  });
+  assert.equal(requests.length, 2);
+  assert.equal(JSON.parse(requests[1].options.body).contents[0].parts[0].text.includes("Pad thai bowl"), true);
+  assert.equal(JSON.parse(requests[1].options.body).contents[0].parts[1].inlineData.mimeType, "image/jpeg");
+});
+
 test("handles selected text that is not a dish", async () => {
   const detectDishFromText = createGeminiClient({
     apiKey: API_KEY,
@@ -193,6 +250,60 @@ test("handles malformed recipe data from Gemini", async () => {
 
   assert.equal(result.ok, false);
   assert.equal(result.error.code, "bad_response");
+});
+
+test("rejects incoherent non-dish data from Gemini", async () => {
+  const detectDishFromText = createGeminiClient({
+    apiKey: API_KEY,
+    fetchImpl: mockSuccessfulFetch({
+      isDish: false,
+      confidence: 0.98,
+      dishName: "Unexpected dish name",
+      language: "en",
+      recipe: null,
+    }),
+  });
+
+  const result = await detectDishFromText("a sunny day");
+
+  assert.equal(result.ok, false);
+  assert.equal(result.error.code, "bad_response");
+});
+
+test("rejects recipes without a usable dish name or cooking steps", async () => {
+  for (const data of [
+    {
+      isDish: true,
+      confidence: 0.9,
+      dishName: "  ",
+      language: "en",
+      recipe: { ingredients: ["water"], steps: ["Boil."] },
+    },
+    {
+      isDish: true,
+      confidence: 0.9,
+      dishName: "Soup",
+      language: "en",
+      recipe: { ingredients: ["water"], steps: ["  "] },
+    },
+    {
+      isDish: true,
+      confidence: 1.1,
+      dishName: "Soup",
+      language: "en",
+      recipe: { ingredients: ["water"], steps: ["Boil."] },
+    },
+  ]) {
+    const detectDishFromText = createGeminiClient({
+      apiKey: API_KEY,
+      fetchImpl: mockSuccessfulFetch(data),
+    });
+
+    const result = await detectDishFromText("soup");
+
+    assert.equal(result.ok, false);
+    assert.equal(result.error.code, "bad_response");
+  }
 });
 
 test("handles Gemini API HTTP errors", async () => {

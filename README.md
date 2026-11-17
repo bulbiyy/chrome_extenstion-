@@ -6,6 +6,8 @@ The background client exports `detectDishFromText(selectedText)`. When a text se
 
 Image selections are captured and displayed by the popup, but the Gemini client currently supports text only. Image identification needs a separate multimodal request implementation.
 
+The popup's file picker is currently a UI placeholder: users can choose files or drop them onto the Add files button. It accepts JPEG, PNG, WebP, HEIC, and HEIF images and rejects other types, showing selection/rejection status locally. Files are not sent out to Gemini yet.
+
 For image selections, the background reads the clicked image element's intrinsic dimensions in the frame where it was clicked and includes its width, height, and alt text in the request package. It rejects images whose dimensions cannot be verified, exceed 8,192 pixels on either side, or exceed 40 megapixels total. This validates pixel dimensions only; the current package sends an image URL, so it does not measure the image file's byte size.
 
 The Gemini client is created in `service-worker.js` with the local API key. Its `createGeminiClient` factory also accepts an injected `fetchImpl`, allowing tests to exercise the response handling without making live API calls.
@@ -47,6 +49,8 @@ The business logic classifies a result as a dish only when Gemini reports
 as `isDish: false` with a null dish name and recipe. The application receives
 the classification, confidence, dish name, and recipe in the
 `COOKS_RECIPE_RESULT` message and the stored `recipeResponse`.
+The popup and in-page card show a clear no-dish or unavailable-result message
+and hide recipe details for non-dish, malformed, or failed responses.
 
 The popup exposes `CooksUserSession.signIn(profile)`,
 `CooksUserSession.getCurrentUser()`, and `CooksUserSession.signOut()` for the

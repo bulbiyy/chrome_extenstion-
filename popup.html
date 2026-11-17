@@ -37,6 +37,23 @@
           title="Save recipe"
         >♧</button>
 
+        <label
+          class="file-upload-button"
+          id="file-upload-button"
+          title="Drop files here or choose files. Uploading to Gemini will be available in a future update."
+        >
+          <span aria-hidden="true">＋</span>
+          <span>Add files</span>
+          <input
+            class="file-input"
+            id="recipe-files"
+            type="file"
+            multiple
+            accept=".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif"
+            aria-label="Choose files or drop them here; uploading to Gemini will be available in a future update"
+          >
+        </label>
+
       </div>
     </div>
 
@@ -63,13 +80,14 @@
       <h1 id="dish-name">Creamy Tomato Pasta</h1>
 
       <p class="recipe-status" id="recipe-status" role="status" aria-live="polite" hidden></p>
+      <p class="file-selection-status" id="file-selection-status" role="status" aria-live="polite" hidden></p>
 
       <p class="description" id="dish-description">
         A cozy tomato pasta with garlic, basil, and a silky sauce.
       </p>
 
       <!-- Cooking time, servings, and difficulty -->
-      <div class="meta-row" aria-label="Recipe details">
+      <div class="meta-row" id="recipe-details" aria-label="Recipe details">
         <span>
           <span aria-hidden="true">◷</span>
           <strong id="cook-time">25 min</strong>
@@ -84,7 +102,7 @@
       </div>
 
       <!-- Ingredients section -->
-      <div class="section-heading">
+      <div class="section-heading" id="ingredients-heading">
         <h2>What you'll need</h2>
         <span class="small-note">INGREDIENTS</span>
       </div>
@@ -92,7 +110,7 @@
       <ul id="ingredients" class="ingredient-list"></ul>
 
       <!-- Cooking instructions section -->
-      <div class="section-heading steps-heading">
+      <div class="section-heading steps-heading" id="steps-heading">
         <h2>Make it</h2>
         <span class="small-note">IN A FEW STEPS</span>
       </div>
@@ -118,13 +136,13 @@
       </a>
 
       <!-- External recipe references -->
-      <div class="references-block">
+      <div class="references-block" id="references-block">
         <h2>References</h2>
         <div id="references" class="reference-list"></div>
       </div>
 
       <!-- Footer -->
-      <p class="footer-note">
+      <p class="footer-note" id="footer-note">
         A starting point for your next meal ✳
       </p>
 

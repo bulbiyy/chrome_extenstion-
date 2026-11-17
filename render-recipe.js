@@ -64,6 +64,22 @@
   // Returns one display model, or null when there is nothing to show.
   function toDisplayModel(data) {
     if (data?.isDish && data.recipe) {
+      if (
+        typeof data.dishName !== "string" ||
+        !data.dishName.trim() ||
+        !Array.isArray(data.recipe.ingredients) ||
+        data.recipe.ingredients.length === 0 ||
+        !data.recipe.ingredients.every(
+          (item) => typeof item === "string" && item.trim(),
+        ) ||
+        !Array.isArray(data.recipe.steps) ||
+        data.recipe.steps.length === 0 ||
+        !data.recipe.steps.every(
+          (step) => typeof step === "string" && step.trim(),
+        )
+      ) {
+        return null;
+      }
       return {
         name: data.dishName,
         category: "RECIPE",
@@ -77,17 +93,60 @@
         references: []
       };
     }
-    if (data && typeof data.name === "string") {
+    if (
+      data &&
+      typeof data.name === "string" &&
+      data.name.trim() &&
+      Array.isArray(data.ingredients) &&
+      data.ingredients.length > 0 &&
+      data.ingredients.every((item) => typeof item === "string" && item.trim()) &&
+      Array.isArray(data.instructions) &&
+      data.instructions.length > 0 &&
+      data.instructions.every((step) => typeof step === "string" && step.trim())
+    ) {
       return data;
     }
     return null;
+  }
+
+  function setRecipeDetailsVisible(root, visible) {
+    for (const id of [
+      "recipe-category",
+      "dish-description",
+      "recipe-details",
+      "ingredients-heading",
+      "ingredients",
+      "steps-heading",
+      "instructions",
+      "youtube-link",
+      "references-block",
+      "footer-note",
+    ]) {
+      const element = root.getElementById(id);
+      if (element) element.hidden = !visible;
+    }
+  }
+
+  function renderMessage(message, title = "Recipe unavailable", root = document) {
+    setText("dish-name", title, "Recipe unavailable", root);
+    setRecipeDetailsVisible(root, false);
+
+    for (const id of ["ingredients", "instructions", "references"]) {
+      const element = root.getElementById(id);
+      if (element) element.replaceChildren();
+    }
+
+    const status = root.getElementById("recipe-status");
+    if (status) {
+      status.hidden = false;
+      status.textContent = message;
+    }
   }
 
   function fillList(root, id, items) {
     const list = root.getElementById(id);
     if (!list) return;
     list.replaceChildren();
-    if (!Array.isArray(items)) return;
     for (const item of items) {
       const li = document.createElement("li");
       li.textContent = item; // textContent only: never inject untrusted HTML
@@ -100,14 +159,23 @@
     const model = toDisplayModel(data);
 
     if (!model) {
-      if (status) {
-        status.hidden = false;
-        status.textContent =
-          "The selected text was not identified as a dish. Try another selection.";
+      if (data?.isDish === false) {
+        renderMessage(
+          "The selected text was not identified as a dish. Try another selection.",
+          "No dish found",
+          root,
+        );
+      } else {
+        renderMessage(
+          "The recipe service returned an incomplete result. Try again.",
+          "Recipe unavailable",
+          root,
+        );
       }
       return;
     }
 
+    setRecipeDetailsVisible(root, true);
     setText("dish-name", model.name, "Recipe", root);
     setText("recipe-category", model.category, "RECIPE", root);
     setText("dish-description", model.description, "", root);
@@ -146,5 +214,5 @@
     }
   }
 
-  globalThis.CooksRender = { demoRecipe, setText, renderRecipe };
+  globalThis.CooksRender = { demoRecipe, setText, renderRecipe, renderMessage };
 })();

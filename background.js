@@ -33,6 +33,39 @@ function processTextSelection(selectedText) {
     });
 }
 
+function processImageSelection({ imageUrl, altText = "", pageUrl = "", imageWidth, imageHeight }) {
+  return chrome.storage.local.set({
+    selectedText: "",
+    selectedImageUrl: imageUrl,
+    recipeResponse: null
+  }).then(() => {
+    const clientReady = globalThis.geminiClientReady;
+    if (!clientReady) {
+      throw new Error("Gemini image detection did not initialize. Check the service worker console.");
+    }
+    return clientReady.then((detect) => {
+      const detector = detect?.detectDishFromImage || globalThis.detectDishFromImage;
+      if (typeof detector !== "function") {
+        throw new Error("Gemini image detection failed to load. Check config.js and the service worker console.");
+      }
+      return detector({ imageUrl, altText, pageUrl, imageWidth, imageHeight });
+    });
+  }).then((result) => chrome.storage.local.set({ recipeResponse: result })
+    .then(() => result))
+    .catch((error) => {
+      console.error("Could not process the selected image:", error);
+      const recipeResponse = {
+        ok: false,
+        error: {
+          code: "client_unavailable",
+          message: error.message || "Could not process the selected image."
+        }
+      };
+      return chrome.storage.local.set({ recipeResponse })
+        .then(() => recipeResponse);
+    });
+}
+
 // Rebuild the image and text context-menu options after installation or update.
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll(() => {
@@ -309,7 +342,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
       return;
     }
- 
+
     const dimensions = validateImageDimensions(imageWidth, imageHeight);
     if (!dimensions.valid) {
       const recipeResponse = {
@@ -336,29 +369,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return true;
     }
 
-    const recipeResponse = {
-      ok: false,
-      error: {
-        code: "image_not_supported",
-        message: "The image was captured, but image identification is not implemented in the Gemini client yet."
-      }
-    };
-    chrome.storage.local.set({
-      selectedImageUrl: imageUrl,
-      selectedText: "",
-      recipeResponse
-    }).then(() => {
-      sendResponse({
-        type: "COOKS_SELECTION_RECEIVED",
-        payload: recipeResponse
+    processImageSelection({ imageUrl, altText, pageUrl, imageWidth, imageHeight })
+      .then((result) => {
+        sendResponse({
+          type: result?.ok ? "COOKS_RECIPE_RESULT" : "COOKS_ERROR",
+          payload: result
+        });
+      })
+      .catch((error) => {
+        console.error("Could not save the selected image:", error);
+        sendResponse({
+          type: "COOKS_ERROR",
+          payload: { message: "Could not save the selected image." }
+        });
       });
-    }).catch((error) => {
-      console.error("Could not save the selected image:", error);
-      sendResponse({
-        type: "COOKS_ERROR",
-        payload: { message: "Could not save the selected image." }
-      });
-    });
     return true;
   }
 });

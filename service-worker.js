@@ -9,3 +9,6 @@ globalThis.geminiClientReady = Promise.resolve(
 globalThis.userSession = createUserSession(chrome.storage.local);
 globalThis.detectDishFromText = (selectedText) =>
   globalThis.geminiClientReady.then((detect) => detect(selectedText));
+globalThis.detectDishFromImage = (imageRequest) =>
+  globalThis.geminiClientReady.then((detect) =>
+    detect.detectDishFromImage ? detect.detectDishFromImage(imageRequest) : detect(imageRequest));

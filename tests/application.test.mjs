@@ -46,10 +46,15 @@ function createPopupHarness(storageData = {}) {
     "cook-time",
     "servings",
     "difficulty",
+    "recipe-details",
+    "ingredients-heading",
     "ingredients",
+    "steps-heading",
     "instructions",
     "youtube-link",
     "references",
+    "references-block",
+    "footer-note",
     "dish-image",
   ];
   const elements = new Map(ids.map((id) => [id, new FakeElement(id)]));
@@ -133,6 +138,78 @@ test("displays the recipe response in the popup", async () => {
     ["Soak the noodles.", "Stir-fry and serve."],
   );
   assert.equal(elements.get("recipe-status").hidden, true);
+});
+
+test("shows a clear no-dish result without leaving the demo recipe visible", async () => {
+  const recipeResponse = {
+    ok: true,
+    data: {
+      isDish: false,
+      confidence: 0.98,
+      dishName: null,
+      language: "en",
+      recipe: null,
+    },
+  };
+  const { context, elements } = createPopupHarness({ recipeResponse });
+  await loadPopupScripts(context);
+  await vm.runInContext("loadRecipeResponse()", context);
+
+  assert.equal(elements.get("dish-name").textContent, "No dish found");
+  assert.equal(elements.get("recipe-status").hidden, false);
+  assert.match(elements.get("recipe-status").textContent, /not identified as a dish/);
+  for (const id of [
+    "recipe-category",
+    "dish-description",
+    "recipe-details",
+    "ingredients-heading",
+    "ingredients",
+    "steps-heading",
+    "instructions",
+    "youtube-link",
+    "references-block",
+    "footer-note",
+  ]) {
+    assert.equal(elements.get(id).hidden, true, `Expected #${id} to be hidden`);
+  }
+  assert.deepEqual(elements.get("ingredients").children, []);
+  assert.deepEqual(elements.get("instructions").children, []);
+});
+
+test("shows malformed successful data as an incomplete result", async () => {
+  const recipeResponse = {
+    ok: true,
+    data: {
+      isDish: true,
+      dishName: "Soup",
+      recipe: { ingredients: ["water"], steps: "not-an-array" },
+    },
+  };
+  const { context, elements } = createPopupHarness({ recipeResponse });
+  await loadPopupScripts(context);
+  await vm.runInContext("loadRecipeResponse()", context);
+
+  assert.equal(elements.get("dish-name").textContent, "Recipe unavailable");
+  assert.equal(elements.get("recipe-status").hidden, false);
+  assert.match(elements.get("recipe-status").textContent, /incomplete result/);
+  assert.equal(elements.get("ingredients").children.length, 0);
+  assert.equal(elements.get("instructions").children.length, 0);
+});
+
+test("clears demo recipe details when the API returns an error", async () => {
+  const recipeResponse = {
+    ok: false,
+    error: { code: "bad_response", message: "The service returned invalid data." },
+  };
+  const { context, elements } = createPopupHarness({ recipeResponse });
+  await loadPopupScripts(context);
+  await vm.runInContext("loadRecipeResponse()", context);
+
+  assert.equal(elements.get("dish-name").textContent, "Recipe unavailable");
+  assert.equal(elements.get("recipe-status").hidden, false);
+  assert.match(elements.get("recipe-status").textContent, /bad_response/);
+  assert.equal(elements.get("recipe-details").hidden, true);
+  assert.equal(elements.get("ingredients-heading").hidden, true);
 });
 
 test("displays a selected image and falls back if it fails to load", async () => {
