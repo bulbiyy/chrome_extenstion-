@@ -52,6 +52,15 @@ the classification, confidence, dish name, and recipe in the
 The popup and in-page card show a clear no-dish or unavailable-result message
 and hide recipe details for non-dish, malformed, or failed responses.
 
+The popup's Save button stores valid generated dishes in `chrome.storage.local`
+under a user-specific `cooksSavedRecipes:<userId>` key. Saved entries include
+the dish result and a `savedAt` timestamp; recipes remain on this device and
+are not synchronized to a server. Same-named recipes are treated as the same
+saved entry only when their combined instruction character counts also match,
+so variations with different instruction lengths can be saved separately.
+Signing out clears session and transient selection data while preserving saved
+recipe collections.
+
 The popup exposes `CooksUserSession.signIn(profile)`,
 `CooksUserSession.getCurrentUser()`, and `CooksUserSession.signOut()` for the
 application layer. A profile must include a non-empty `userId`. Sign-in stores
