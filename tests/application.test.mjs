@@ -11,15 +11,21 @@ class FakeElement {
     this.id = id;
     this.textContent = "";
     this.hidden = false;
+    this.disabled = false;
     this.dataset = {};
     this.children = [];
     this.listeners = new Map();
+    this.attributes = new Map();
   }
 
   addEventListener(type, listener) {
     const listeners = this.listeners.get(type) || [];
     listeners.push(listener);
     this.listeners.set(type, listeners);
+  }
+
+  setAttribute(name, value) {
+    this.attributes.set(name, value);
   }
 
   dispatch(type) {
@@ -56,6 +62,8 @@ function createPopupHarness(storageData = {}) {
     "references-block",
     "footer-note",
     "dish-image",
+    "save-button",
+    "save-status",
   ];
   const elements = new Map(ids.map((id) => [id, new FakeElement(id)]));
   elements.get("dish-name").textContent = "Creamy Tomato Pasta";
@@ -73,6 +81,9 @@ function createPopupHarness(storageData = {}) {
           const names = Array.isArray(keys) ? keys : [keys];
           return Object.fromEntries(names.map((key) => [key, storageData[key]]));
         },
+        async set(values) {
+          Object.assign(storageData, values);
+        },
       },
     },
     runtime: {
@@ -84,10 +95,15 @@ function createPopupHarness(storageData = {}) {
     document,
     location: { protocol: "https:" },
     console: { error() {}, log() {} },
+    CooksUserSession: {
+      async getCurrentUser() {
+        return "user-123";
+      },
+    },
     URL,
   });
 
-  return { context, elements, imageTag };
+  return { context, elements, imageTag, storageData };
 }
 
 async function loadPopupScripts(context) {
@@ -138,6 +154,58 @@ test("displays the recipe response in the popup", async () => {
     ["Soak the noodles.", "Stir-fry and serve."],
   );
   assert.equal(elements.get("recipe-status").hidden, true);
+  assert.equal(elements.get("save-button").disabled, false);
+});
+
+test("saves a valid dish for the active user and toggles it off", async () => {
+  const recipeResponse = {
+    ok: true,
+    data: {
+      isDish: true,
+      confidence: 0.94,
+      dishName: "Pad Thai",
+      language: "en",
+      recipe: {
+        ingredients: ["200 g rice noodles", "1 egg"],
+        steps: ["Soak the noodles.", "Stir-fry and serve."],
+      },
+    },
+  };
+  const { context, elements, storageData } = createPopupHarness({ recipeResponse });
+  await loadPopupScripts(context);
+  await vm.runInContext("loadRecipeResponse()", context);
+
+  await vm.runInContext("toggleSavedRecipe()", context);
+  const savedKey = "cooksSavedRecipes:user-123";
+  assert.equal(storageData[savedKey].length, 1);
+  assert.equal(storageData[savedKey][0].dishName, "Pad Thai");
+  assert.equal(elements.get("save-button").attributes.get("aria-pressed"), "true");
+  assert.match(elements.get("save-status").textContent, /saved to your account/);
+
+  storageData.recipeResponse = {
+    ok: true,
+    data: {
+      ...recipeResponse.data,
+      recipe: {
+        ingredients: ["200 g rice noodles", "1 egg", "2 tbsp sauce"],
+        steps: ["Boil the noodles until tender.", "Whisk the sauce and toss with noodles."],
+      },
+    },
+  };
+  await vm.runInContext("loadRecipeResponse()", context);
+  await vm.runInContext("toggleSavedRecipe()", context);
+  assert.equal(storageData[savedKey].length, 2);
+  assert.equal(storageData[savedKey][1].dishName, "Pad Thai");
+
+  storageData.recipeResponse = recipeResponse;
+  await vm.runInContext("loadRecipeResponse()", context);
+  await vm.runInContext("toggleSavedRecipe()", context);
+  assert.equal(storageData[savedKey].length, 1);
+  assert.deepEqual(
+    Array.from(storageData[savedKey][0].recipe.steps),
+    ["Boil the noodles until tender.", "Whisk the sauce and toss with noodles."],
+  );
+  assert.equal(elements.get("save-button").attributes.get("aria-pressed"), "false");
 });
 
 test("shows a clear no-dish result without leaving the demo recipe visible", async () => {
