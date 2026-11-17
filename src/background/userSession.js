@@ -38,7 +38,13 @@ export function createUserSession(storage) {
     },
 
     async signOut() {
-      await storage.clear();
+      await storage.remove([
+        PROFILE_KEY,
+        SESSION_MARKER_KEY,
+        "selectedText",
+        "selectedImageUrl",
+        "recipeResponse",
+      ]);
     },
   };
 }
