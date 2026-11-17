@@ -17,7 +17,7 @@
 
       <div class="header-actions">
 
-        <!-- Like button -->
+        <!-- Recipe actions -->
         <button
           class="icon-button like-button"
           id="like-button"
@@ -27,7 +27,6 @@
           title="Like recipe"
         >♡</button>
 
-        <!-- Save button -->
         <button
           class="icon-button save-button"
           id="save-button"
@@ -57,7 +56,7 @@
       </div>
     </div>
 
-    <!-- Hero image and image label -->
+    <!-- Recipe image -->
     <div class="hero-wrap">
       <img
         id="dish-image"
@@ -69,10 +68,9 @@
       <span class="image-tag">RECIPE IDEA</span>
     </div>
 
-    <!-- Main recipe content -->
+    <!-- Recipe content -->
     <section class="recipe-content">
 
-      <!-- Recipe title and description -->
       <p class="eyebrow" id="recipe-category">
         QUICK &amp; COMFORTING
       </p>
@@ -86,7 +84,7 @@
         A cozy tomato pasta with garlic, basil, and a silky sauce.
       </p>
 
-      <!-- Cooking time, servings, and difficulty -->
+      <!-- Recipe details -->
       <div class="meta-row" id="recipe-details" aria-label="Recipe details">
         <span>
           <span aria-hidden="true">◷</span>
@@ -101,23 +99,27 @@
         <span class="difficulty" id="difficulty">Easy</span>
       </div>
 
-      <!-- Ingredients section -->
+      <!-- Ingredients -->
       <div class="section-heading" id="ingredients-heading">
-        <h2>What you'll need</h2>
+        <button class="section-toggle" id="ingredients-toggle" type="button" aria-expanded="true" aria-controls="ingredients">
+          <h2>What you'll need</h2><span class="section-chevron" aria-hidden="true">⌄</span>
+        </button>
         <span class="small-note">INGREDIENTS</span>
       </div>
 
       <ul id="ingredients" class="ingredient-list"></ul>
 
-      <!-- Cooking instructions section -->
+      <!-- Instructions -->
       <div class="section-heading steps-heading" id="steps-heading">
-        <h2>Make it</h2>
+        <button class="section-toggle" id="steps-toggle" type="button" aria-expanded="true" aria-controls="instructions">
+          <h2>Make it</h2><span class="section-chevron" aria-hidden="true">⌄</span>
+        </button>
         <span class="small-note">IN A FEW STEPS</span>
       </div>
 
       <ol id="instructions" class="steps-list"></ol>
 
-      <!-- Link to YouTube -->
+      <!-- Related links -->
       <a
         id="youtube-link"
         class="video-link"
@@ -135,13 +137,11 @@
         <span class="link-arrow" aria-hidden="true">↗</span>
       </a>
 
-      <!-- External recipe references -->
       <div class="references-block" id="references-block">
         <h2>References</h2>
         <div id="references" class="reference-list"></div>
       </div>
 
-      <!-- Footer -->
       <p class="footer-note" id="footer-note">
         A starting point for your next meal ✳
       </p>
@@ -149,7 +149,7 @@
     </section>
   </main>
 
-  <!-- Popup JavaScript -->
+  <!-- Popup scripts -->
   <script src="render-recipe.js"></script>
   <script src="selection-data.js"></script>
   <script src="user-session.js"></script>

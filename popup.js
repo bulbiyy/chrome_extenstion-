@@ -1,9 +1,4 @@
-// PBI 1: EXTENSION SKELETON
- 
-// setText() and renderRecipe() now live in render-recipe.js (CooksRender),
-// shared with the in-page Shadow DOM card (shadow-card.js).
- 
-// Display the stored Gemini recipe or report why a recipe is unavailable.
+// Load saved recipe result
 async function loadRecipeResponse() {
   const title = document.getElementById("dish-name");
   if (!title) {
@@ -38,7 +33,7 @@ async function loadRecipeResponse() {
   }
 }
  
-// Show the captured image, falling back to the bundled test image if needed.
+// Load selected recipe image
 async function loadPopupImage() {
   const image = document.getElementById("dish-image");
   if (!image) {
@@ -196,14 +191,7 @@ fileUploadButton?.addEventListener("drop", (event) => {
   recipeFiles.dispatchEvent(new Event("change", { bubbles: true }));
 });
 
-// The demo recipe and its documented shape now live in render-recipe.js
-// as CooksRender.demoRecipe.
- 
-// Suugestion
-// LIKE BUTTON
- 
-// PURPOSE:
-// Allow the user to like or unlike the displayed recipe.
+// Demo recipe preview
 if (location.protocol === "chrome-extension:") {
   CooksRender.renderRecipe(CooksRender.demoRecipe);
 }
