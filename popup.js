@@ -4,6 +4,8 @@
 // shared with the in-page Shadow DOM card (shadow-card.js).
  
 // Display the stored Gemini recipe or report why a recipe is unavailable.
+let currentDishData = null;
+
 async function loadRecipeResponse() {
   const title = document.getElementById("dish-name");
   if (!title) {
@@ -19,6 +21,7 @@ async function loadRecipeResponse() {
     }
  
     if (!response.ok) {
+      currentDishData = null;
       const error = response.error || {};
       const details = [
         error.code,
@@ -31,10 +34,131 @@ async function loadRecipeResponse() {
       CooksRender.renderMessage(message);
       return;
     }
- 
+
+    currentDishData = isValidDish(response.data) ? response.data : null;
     CooksRender.renderRecipe(response.data);
+    if (currentDishData) {
+      await updateSaveButtonState();
+    } else {
+      setSaveButtonEnabled(false);
+    }
   } catch (error) {
     console.error("Could not load the recipe response:", error);
+    currentDishData = null;
+    setSaveButtonEnabled(false);
+  }
+}
+
+function isValidDish(data) {
+  return Boolean(
+    data?.isDish === true &&
+    typeof data.dishName === "string" &&
+    data.dishName.trim() &&
+    Number.isFinite(data.confidence) &&
+    data.confidence >= 0.75 &&
+    data.confidence <= 1 &&
+    Array.isArray(data.recipe?.ingredients) &&
+    data.recipe.ingredients.length > 0 &&
+    data.recipe.ingredients.every((item) => typeof item === "string" && item.trim()) &&
+    Array.isArray(data.recipe?.steps) &&
+    data.recipe.steps.length > 0 &&
+    data.recipe.steps.every((step) => typeof step === "string" && step.trim())
+  );
+}
+
+function setSaveButtonEnabled(enabled) {
+  const saveButton = document.getElementById("save-button");
+  if (saveButton) {
+    saveButton.disabled = !enabled;
+    if (!enabled) {
+      saveButton.setAttribute("aria-pressed", "false");
+    }
+  }
+}
+
+function setSaveStatus(message) {
+  const status = document.getElementById("save-status");
+  if (status) {
+    status.textContent = message;
+    status.hidden = !message;
+  }
+}
+
+function getSavedRecipeStorageKey(userId) {
+  return `cooksSavedRecipes:${encodeURIComponent(userId)}`;
+}
+
+function getInstructionCharacterCount(recipe) {
+  return recipe.steps.join("").length;
+}
+
+function isSameSavedRecipe(savedRecipe, dishData) {
+  return typeof savedRecipe?.dishName === "string" &&
+    savedRecipe.dishName.trim().toLocaleLowerCase() ===
+      dishData.dishName.trim().toLocaleLowerCase() &&
+    Array.isArray(savedRecipe.recipe?.steps) &&
+    getInstructionCharacterCount(savedRecipe.recipe) ===
+      getInstructionCharacterCount(dishData.recipe);
+}
+
+function isSavedDish(savedRecipes, dishData) {
+  return savedRecipes.some((recipe) =>
+    isSameSavedRecipe(recipe, dishData)
+  );
+}
+
+async function updateSaveButtonState() {
+  const saveButton = document.getElementById("save-button");
+  if (!saveButton || !currentDishData) {
+    setSaveButtonEnabled(false);
+    return;
+  }
+
+  const userId = await CooksUserSession.getCurrentUser();
+  const storageKey = getSavedRecipeStorageKey(userId);
+  const stored = await chrome.storage.local.get(storageKey);
+  const savedRecipes = Array.isArray(stored[storageKey]) ? stored[storageKey] : [];
+  saveButton.disabled = false;
+  saveButton.setAttribute(
+    "aria-pressed",
+    String(isSavedDish(savedRecipes, currentDishData))
+  );
+}
+
+async function toggleSavedRecipe() {
+  const saveButton = document.getElementById("save-button");
+  if (!saveButton || !isValidDish(currentDishData)) {
+    setSaveStatus("Only a valid generated dish can be saved.");
+    return;
+  }
+
+  saveButton.disabled = true;
+  setSaveStatus("");
+  try {
+    const userId = await CooksUserSession.getCurrentUser();
+    const storageKey = getSavedRecipeStorageKey(userId);
+    const stored = await chrome.storage.local.get(storageKey);
+    const savedRecipes = Array.isArray(stored[storageKey]) ? stored[storageKey] : [];
+    const alreadySaved = isSavedDish(savedRecipes, currentDishData);
+    const updatedRecipes = alreadySaved
+      ? savedRecipes.filter((recipe) =>
+          !isSameSavedRecipe(recipe, currentDishData)
+        )
+      : [...savedRecipes, {
+          ...currentDishData,
+          savedAt: new Date().toISOString()
+        }];
+
+    await chrome.storage.local.set({ [storageKey]: updatedRecipes });
+    saveButton.setAttribute("aria-pressed", String(!alreadySaved));
+    setSaveStatus(alreadySaved
+      ? "Removed from your saved recipes."
+      : "Recipe saved to your account on this device.");
+  } catch (error) {
+    console.error("Could not save the recipe:", error);
+    setSaveStatus("Could not update your saved recipes. Please try again.");
+  } finally {
+    saveButton.disabled = false;
   }
 }
  
@@ -84,6 +208,8 @@ async function loadPopupImage() {
  
 loadRecipeResponse();
 loadPopupImage();
+
+document.getElementById("save-button")?.addEventListener("click", toggleSavedRecipe);
 
 const recipeFiles = document.getElementById("recipe-files");
 const fileSelectionStatus = document.getElementById("file-selection-status");
