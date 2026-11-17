@@ -1,4 +1,4 @@
-// file to make right click button in the list to call the extension
+// Context-menu recipe lookup
  
 (() => {
   if (globalThis.__cooksLookupLoaded) return;
@@ -7,7 +7,7 @@
   const MAX_TEXT_LENGTH = 1000; 
   let lookupId = 0; 
  
-  // error messages
+  // Format lookup errors
   function describeError(result) {
     const error = result?.error || {};
     if (error.code === "image_not_supported") {
@@ -22,7 +22,7 @@
     return details.length ? `${message} (${details.join(", ")})` : message;
   }
  
-  // card.open() replaces any card already on screen, so only one is ever visible.
+  // Open one lookup card at a time
   async function ask(request, openOptions) {
     const card = globalThis.__cooksCard;
     if (!card) return;
@@ -44,7 +44,7 @@
  
     const result = response?.payload;
     if (response?.type === "COOKS_RECIPE_RESULT" && result?.ok) {
-      card.update(result.data); // shows the recipe
+      card.update(result.data);
     } else {
       card.showMessage(describeError(result));
     }
@@ -63,8 +63,54 @@
         type: "IDENTIFY_DISH_FROM_TEXT",
         payload: { text, pageUrl: window.location.href }
       },
-      { title: text, status: "Finding a recipe…" }
+      {
+        imageUrl: findImageNearSelection(),
+        imageLabel: "RELATED IMAGE",
+        title: text,
+        status: "Finding a recipe…",
+        loading: true
+      }
     );
+  }
+
+  function findImageNearSelection() {
+    const selection = window.getSelection();
+    if (!selection?.rangeCount) return "";
+
+    const range = selection.getRangeAt(0);
+    const textRect = range.getBoundingClientRect();
+    if (!textRect.width && !textRect.height) return "";
+
+    const textX = textRect.left + textRect.width / 2;
+    const textY = textRect.top + textRect.height / 2;
+    let closestImage = null;
+    let closestDistance = Infinity;
+
+    for (const image of document.images) {
+      const rect = image.getBoundingClientRect();
+      if (
+        !image.complete ||
+        !image.naturalWidth ||
+        rect.width < 48 ||
+        rect.height < 48 ||
+        rect.bottom <= 0 ||
+        rect.right <= 0 ||
+        rect.top >= window.innerHeight ||
+        rect.left >= window.innerWidth
+      ) {
+        continue;
+      }
+
+      const dx = Math.max(rect.left - textX, 0, textX - rect.right);
+      const dy = Math.max(rect.top - textY, 0, textY - rect.bottom);
+      const distance = Math.hypot(dx, dy);
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestImage = image;
+      }
+    }
+
+    return closestImage?.currentSrc || closestImage?.src || "";
   }
  
   function runImageLookup(imageUrl, imageDetails) {
@@ -79,7 +125,7 @@
           pageUrl: window.location.href
         }
       },
-      { imageUrl, title: "Selected image", status: "Looking at this image…" }
+      { imageUrl, title: "Selected image", status: "Looking at this image…", loading: true }
     );
   }
  

@@ -1,35 +1,23 @@
-// Shared recipe renderer. Loaded by popup.html AND injected as a content
-// script, so the toolbar popup and the in-page Shadow DOM card use identical
-// rendering code. Every function takes a `root` (document or a ShadowRoot);
-// both support getElementById().
+// Shared recipe rendering
 
 (() => {
-  // Placeholder data shape (moved here from popup.js so both UIs share it).
+  // Demo recipe data
   const demoRecipe = {
-    // The name of the dish
     name: "Creamy Tomato Pasta",
-    // A short category label displayed above the dish name.
     category: "QUICK & COMFORTING",
-    // A short description of the dish.
     description: "A cozy tomato pasta with garlic, basil, and a silky sauce.",
-    // Path or URL of the dish image displayed in the popup.
     image: "assets/pasta.svg",
-    // Basic recipe information displayed near the dish image.
     cookTime: "25 min",
     servings: "2 servings",
     difficulty: "Easy",
-    // Each ingredient is a string.
     ingredients: ["200 g pasta", "1 cup crushed tomatoes", "2 cloves garlic"],
-    // Ordered list of cooking instructions; each is a string.
     instructions: [
       "Cook the pasta.",
       "Prepare the sauce.",
       "Combine the pasta and sauce."
     ],
-    // Link to YouTube recipe videos related to the dish.
     youtubeSearchUrl:
       "https://www.youtube.com/results?search_query=creamy+tomato+pasta+recipe",
-    // External references related to the recipe.
     references: [
       {
         label: "Pasta basics",
@@ -38,7 +26,7 @@
     ]
   };
 
-  // Set an element's text, using `fallback` when the value is missing/empty.
+  // Safe text and URL helpers
   function setText(id, value, fallback = "", root = document) {
     const element = root.getElementById(id);
     if (element) {
@@ -47,7 +35,6 @@
     }
   }
 
-  // Only http(s) links are allowed; returns null for malformed/unsafe URLs.
   function safeHttpUrl(url) {
     try {
       const parsed = new URL(url);
@@ -59,9 +46,7 @@
     }
   }
 
-  // Accepts either the Gemini result ({ isDish, dishName, recipe }) or the
-  // demo/contract shape ({ name, ingredients, instructions, ... }).
-  // Returns one display model, or null when there is nothing to show.
+  // Normalize recipe response shapes
   function toDisplayModel(data) {
     if (data?.isDish && data.recipe) {
       if (
@@ -128,6 +113,7 @@
   }
 
   function renderMessage(message, title = "Recipe unavailable", root = document) {
+    setLoading(false, root);
     setText("dish-name", title, "Recipe unavailable", root);
     setRecipeDetailsVisible(root, false);
 
@@ -143,15 +129,45 @@
     }
   }
 
+  function setLoading(loading, root = document, message = "Finding a recipe…") {
+    const status = root.getElementById("recipe-status");
+    if (!status) return;
+    status.classList?.toggle("is-loading", loading);
+    status.setAttribute?.("aria-busy", String(loading));
+    if (loading) {
+      status.hidden = false;
+      status.textContent = message;
+    } else {
+      status.classList?.remove("is-loading");
+      status.hidden = true;
+      status.textContent = "";
+    }
+  }
+
   function fillList(root, id, items) {
     const list = root.getElementById(id);
     if (!list) return;
     list.replaceChildren();
     for (const item of items) {
       const li = document.createElement("li");
-      li.textContent = item; // textContent only: never inject untrusted HTML
+      li.textContent = item; // Render recipe text safely
       list.append(li);
     }
+  }
+
+  function configureCollapsibleSection(root, buttonId, listId, itemCount, collapseAt) {
+    const button = root.getElementById(buttonId);
+    const list = root.getElementById(listId);
+    if (!button || !list) return;
+
+    const expanded = itemCount < collapseAt;
+    list.hidden = !expanded;
+    button.setAttribute("aria-expanded", String(expanded));
+    button.onclick = () => {
+      const nextExpanded = button.getAttribute("aria-expanded") !== "true";
+      button.setAttribute("aria-expanded", String(nextExpanded));
+      list.hidden = !nextExpanded;
+    };
   }
 
   function renderRecipe(data, root = document) {
@@ -161,7 +177,7 @@
     if (!model) {
       if (data?.isDish === false) {
         renderMessage(
-          "The selected text was not identified as a dish. Try another selection.",
+          "This selection was not identified as a dish. Try selecting a dish name or food image.",
           "No dish found",
           root,
         );
@@ -185,6 +201,8 @@
 
     fillList(root, "ingredients", model.ingredients);
     fillList(root, "instructions", model.instructions);
+    configureCollapsibleSection(root, "ingredients-toggle", "ingredients", model.ingredients.length, 8);
+    configureCollapsibleSection(root, "steps-toggle", "instructions", model.instructions.length, 6);
 
     const youtubeLink = root.getElementById("youtube-link");
     if (youtubeLink) {
@@ -198,7 +216,7 @@
       references.replaceChildren();
       for (const ref of Array.isArray(model.references) ? model.references : []) {
         const href = safeHttpUrl(ref?.url);
-        if (!href) continue; // skip malformed URLs
+        if (!href) continue;
         const a = document.createElement("a");
         a.href = href;
         a.textContent = ref.label || href;
@@ -209,10 +227,12 @@
     }
 
     if (status) {
+      status.classList?.remove("is-loading");
+      status.setAttribute?.("aria-busy", "false");
       status.hidden = true;
       status.textContent = "";
     }
   }
 
-  globalThis.CooksRender = { demoRecipe, setText, renderRecipe, renderMessage };
+  globalThis.CooksRender = { demoRecipe, setText, renderRecipe, renderMessage, setLoading };
 })();

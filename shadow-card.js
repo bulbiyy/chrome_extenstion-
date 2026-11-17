@@ -7,7 +7,7 @@
   let host = null;
   let shadow = null;
  
-  // Same markup as popup.html, wrapped in .cooks-shell (no <body> in a shadow tree).
+  // In-page recipe card markup
   const CARD_HTML = `
     <div class="cooks-shell">
       <main class="recipe-card" aria-labelledby="dish-name">
@@ -36,11 +36,15 @@
             <span class="difficulty" id="difficulty"></span>
           </div>
           <div class="section-heading" id="ingredients-heading">
-            <h2>What you'll need</h2><span class="small-note">INGREDIENTS</span>
+            <button class="section-toggle" id="ingredients-toggle" type="button" aria-expanded="true" aria-controls="ingredients">
+              <h2>What you'll need</h2><span class="section-chevron" aria-hidden="true">⌄</span>
+            </button><span class="small-note">INGREDIENTS</span>
           </div>
           <ul id="ingredients" class="ingredient-list"></ul>
           <div class="section-heading steps-heading" id="steps-heading">
-            <h2>Make it</h2><span class="small-note">IN A FEW STEPS</span>
+            <button class="section-toggle" id="steps-toggle" type="button" aria-expanded="true" aria-controls="instructions">
+              <h2>Make it</h2><span class="section-chevron" aria-hidden="true">⌄</span>
+            </button><span class="small-note">IN A FEW STEPS</span>
           </div>
           <ol id="instructions" class="steps-list"></ol>
           <a id="youtube-link" class="video-link" target="_blank" rel="noopener noreferrer">
@@ -59,6 +63,7 @@
  
   function openCard(data = CooksRender.demoRecipe, options = {}) {
     closeCard();
+    document.getElementById(HOST_ID)?.remove();
  
     host = document.createElement("div");
     host.id = HOST_ID;
@@ -81,17 +86,18 @@
  
     if (data) CooksRender.renderRecipe(data, shadow); 
     if (options.title) CooksRender.setText("dish-name", options.title, "", shadow);
-    setStatus(options.status);
-    setImage(shadow, options.imageUrl);
+    if (options.loading) CooksRender.setLoading(true, shadow, options.status);
+    else setStatus(options.status);
+    setImage(shadow, options.imageUrl, options.imageLabel);
     enableDismiss();
   }
  
-  // re-render the open card with new data 
+  // Update the open card
   function updateCard(data) {
     if (host && shadow) CooksRender.renderRecipe(data, shadow);
   }
  
-  // show the status line inside the card.
+  // Show lookup status
   function setStatus(message) {
     const status = shadow?.getElementById("recipe-status");
     if (!status) return;
@@ -103,13 +109,13 @@
     if (shadow) CooksRender.renderMessage(message, "Recipe unavailable", shadow);
   }
  
-  function setImage(root, imageUrl) {
+  function setImage(root, imageUrl, imageLabel = "SELECTED IMAGE") {
     const image = root.getElementById("dish-image");
     const tag = root.getElementById("image-tag");
     const testUrl = chrome.runtime.getURL(TEST_IMAGE);
     if (!image) return;
  
-    // if a selected image can't load use test image.
+    // Fall back when the selected image fails
     image.addEventListener("error", () => {
       if (image.src !== testUrl) {
         image.src = testUrl;
@@ -121,7 +127,7 @@
     if (imageUrl) {
       image.src = imageUrl;
       image.alt = "Image selected from a webpage";
-      if (tag) tag.textContent = "SELECTED IMAGE";
+      if (tag) tag.textContent = imageLabel;
     } else {
       image.src = testUrl;
       image.alt = "Illustration of a bowl of tomato pasta";
@@ -135,7 +141,7 @@
     shadow = null;
   }
  
-  // outside-click dismiss
+  // Dismiss card on outside click
   function onPointerDownOutside(event) {
     if (host && !event.composedPath().includes(host)) {
       closeCard();
@@ -153,7 +159,7 @@
     }, 0);
   }
  
-  // listeners exist only while a card is open.
+  // Manage dismissal listeners
   function enableDismiss() {
     document.addEventListener("pointerdown", onPointerDownOutside, true);
     document.addEventListener("keydown", onKeyDown, true);
@@ -170,6 +176,9 @@
     open: openCard,
     update: updateCard,
     setStatus,
+    setLoading: (message) => {
+      if (shadow) CooksRender.setLoading(true, shadow, message);
+    },
     showMessage,
     close: closeCard,
     isOpen: () => host !== null

@@ -1,5 +1,7 @@
 const MODEL = "gemini-3.1-flash-lite";
 const REQUEST_TIMEOUT_MS = 60_000;
+import { validateImageDimensions } from "../shared/imageValidation.js";
+
 const API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 export const DISH_CONFIDENCE_THRESHOLD = 0.75;
 
@@ -268,7 +270,6 @@ export function createGeminiClient({
       return failure("bad_input", "Please select an image to check.");
     }
 
-    const { validateImageDimensions } = await import("../shared/imageValidation.js");
     const dimensions = validateImageDimensions(imageWidth, imageHeight);
     if (!dimensions.valid) {
       return failure("invalid_image_size", dimensions.message);

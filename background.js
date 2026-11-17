@@ -66,7 +66,7 @@ function processImageSelection({ imageUrl, altText = "", pageUrl = "", imageWidt
     });
 }
 
-// Rebuild the image and text context-menu options after installation or update.
+// Register context-menu actions
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll(() => {
     if (chrome.runtime.lastError) {
@@ -102,7 +102,7 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
-// Process selected text directly; forward image selections through the content script.
+// Route text and image lookups
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId !== IMAGE_MENU_ID && info.menuItemId !== TEXT_MENU_ID) {
     return;
@@ -143,12 +143,6 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     }
  
     selectionType = "text";
-    processTextSelection(fallbackText)
-      .then(() => chrome.action.openPopup({ windowId: tab.windowId }))
-      .catch((error) => {
-        console.error("Could not save the selected text or open the recipe popup:", error);
-      });
-    return;
   }
  
   if (typeof tab.id !== "number") {
@@ -206,7 +200,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     });
 });
  
-// Process text/image selections with Gemini
+// Process selections with Gemini
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (sender.id !== chrome.runtime.id) {
     return;
@@ -341,32 +335,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         payload: { message: "The image URL is missing." }
       });
       return;
-    }
-
-    const dimensions = validateImageDimensions(imageWidth, imageHeight);
-    if (!dimensions.valid) {
-      const recipeResponse = {
-        ok: false,
-        error: {
-          code: "invalid_image_size",
-          message: dimensions.message
-        }
-      };
-      chrome.storage.local.set({
-        selectedImageUrl: imageUrl,
-        selectedText: "",
-        recipeResponse
-      }).then(() => sendResponse({
-        type: "COOKS_ERROR",
-        payload: recipeResponse
-      })).catch((error) => {
-        console.error("Could not save the image validation error:", error);
-        sendResponse({
-          type: "COOKS_ERROR",
-          payload: { message: "The image is too large or its dimensions could not be checked." }
-        });
-      });
-      return true;
     }
 
     processImageSelection({ imageUrl, altText, pageUrl, imageWidth, imageHeight })
