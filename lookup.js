@@ -21,6 +21,16 @@
     ].filter(Boolean);
     return details.length ? `${message} (${details.join(", ")})` : message;
   }
+
+  function unavailableResult() {
+    return {
+      ok: false,
+      error: {
+        code: "client_unavailable",
+        message: "Cooks could not complete this lookup. Please try again."
+      }
+    };
+  }
  
   // Open one lookup card at a time
   async function ask(request, openOptions) {
@@ -33,16 +43,16 @@
     let response;
     try {
       response = await chrome.runtime.sendMessage(request);
-    } catch (error) {
+    } catch {
       if (id === lookupId && card.isOpen()) {
-        card.showMessage("Could not reach Cooks. Reload this page and try again.");
+        card.showMessage(describeError(unavailableResult()));
       }
       return;
     }
  
     if (id !== lookupId || !card.isOpen()) return; 
  
-    const result = response?.payload;
+    const result = response?.payload || unavailableResult();
     if (response?.type === "COOKS_RECIPE_RESULT" && result?.ok) {
       card.update(result.data);
     } else {

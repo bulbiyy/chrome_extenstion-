@@ -349,6 +349,41 @@ test("routes selected text into the in-page lookup card", async () => {
   });
 });
 
+test("returns a structured bad-input response for an empty lookup", async () => {
+  const onMessage = createChromeEvent();
+  const chrome = {
+    runtime: {
+      id: "test-extension",
+      onInstalled: createChromeEvent(),
+      onMessage,
+    },
+    contextMenus: {
+      onClicked: createChromeEvent(),
+      removeAll(callback) { callback(); },
+      create() {},
+    },
+  };
+  const context = vm.createContext({ chrome, console, URL });
+  vm.runInContext(await readProjectFile("background.js"), context, {
+    filename: "background.js",
+  });
+  let response;
+
+  onMessage.dispatch(
+    { type: "IDENTIFY_DISH_FROM_TEXT", payload: { text: " " } },
+    { id: "test-extension", tab: { id: 7 } },
+    (value) => { response = value; },
+  );
+
+  assert.deepEqual(JSON.parse(JSON.stringify(response)), {
+    type: "COOKS_ERROR",
+    payload: {
+      ok: false,
+      error: { code: "bad_input", message: "The text selection is empty." },
+    },
+  });
+});
+
 test("uses the active highlighted text for an in-page lookup request", async () => {
   const messageListeners = createChromeEvent();
   const requests = [];
@@ -409,4 +444,88 @@ test("uses the active highlighted text for an in-page lookup request", async () 
   });
   assert.equal(card.openOptions.title, "Pad Thai");
   assert.equal(card.updatedData.dishName, "Pad Thai");
+});
+
+test("shows a structured generic error when the service worker disconnects", async () => {
+  const messageListeners = createChromeEvent();
+  const messages = [];
+  const card = {
+    open(_data, options) {
+      this.openOptions = options;
+      this.opened = true;
+    },
+    isOpen() {
+      return this.opened;
+    },
+    showMessage(message) {
+      messages.push(message);
+    },
+  };
+  const context = vm.createContext({
+    chrome: {
+      runtime: {
+        onMessage: messageListeners,
+        async sendMessage() {
+          throw new Error("The service worker stopped before replying.");
+        },
+      },
+    },
+    window: {
+      location: { href: "https://example.test/article" },
+      getSelection: () => ({ toString: () => "sushi" }),
+    },
+    __cooksCard: card,
+  });
+  vm.runInContext(await readProjectFile("lookup.js"), context, {
+    filename: "lookup.js",
+  });
+
+  messageListeners.dispatch({
+    type: "COOKS_SHOW_LOOKUP",
+    payload: { selectionType: "text", fallbackText: "sushi" },
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(card.openOptions.loading, true);
+  assert.deepEqual(messages, [
+    "Cooks could not complete this lookup. Please try again. (client_unavailable)",
+  ]);
+});
+
+test("shows a generic error when a lookup message returns no response", async () => {
+  const messageListeners = createChromeEvent();
+  const messages = [];
+  const card = {
+    open() { this.opened = true; },
+    isOpen() { return this.opened; },
+    showMessage(message) { messages.push(message); },
+  };
+  const context = vm.createContext({
+    chrome: {
+      runtime: {
+        onMessage: messageListeners,
+        async sendMessage() {
+          return undefined;
+        },
+      },
+    },
+    window: {
+      location: { href: "https://example.test/article" },
+      getSelection: () => ({ toString: () => "sushi" }),
+    },
+    __cooksCard: card,
+  });
+  vm.runInContext(await readProjectFile("lookup.js"), context, {
+    filename: "lookup.js",
+  });
+
+  messageListeners.dispatch({
+    type: "COOKS_SHOW_LOOKUP",
+    payload: { selectionType: "text", fallbackText: "sushi" },
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.deepEqual(messages, [
+    "Cooks could not complete this lookup. Please try again. (client_unavailable)",
+  ]);
 });

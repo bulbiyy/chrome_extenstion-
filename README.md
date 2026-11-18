@@ -8,9 +8,9 @@ Image selections use a Gemini multimodal request. The extension asks for access 
 
 The popup's file picker is currently a UI placeholder: users can choose files or drop them onto the Add files button. It accepts JPEG, PNG, WebP, HEIC, and HEIF images and rejects other types, showing selection/rejection status locally. Files are not sent out to Gemini yet.
 
-For image selections, the background reads the clicked image element's intrinsic dimensions in the frame where it was clicked and includes its width, height, and alt text in the request package. It rejects images whose dimensions cannot be verified, exceed 8,192 pixels on either side, or exceed 40 megapixels total. Downloaded images are capped at 13 MiB, must have a supported MIME type, and image downloads and Gemini requests each time out after 25 seconds. The API request is kept below 19 MiB to stay within Gemini's 20 MB inline-data limit.
+For image selections, the background reads the clicked image element's intrinsic dimensions in the frame where it was clicked and includes its width, height, and alt text in the request package. It rejects images whose dimensions cannot be verified, exceed 8,192 pixels on either side, or exceed 40 megapixels total. Downloaded images are capped at 13 MiB, must have a supported MIME type, and the complete lookup (including image download and Gemini call) has one 20-second timeout that aborts the active request. The API request is kept below 19 MiB to stay within Gemini's 20 MB inline-data limit.
 
-Gemini returns a `dishCount` in the shared result: 0 means no identifiable dish, 1 means one dish, and 2 or more means multiple dishes. Only a single dish above the confidence threshold receives a recipe. Text results are instructed to preserve the input's script/romanization and return a lowercase two-letter ISO 639-1 language code; output is rejected if the code or dish count is malformed. Multilingual identification is an initial implementation and model results may still be incorrect, especially for rare dishes or unclear images.
+Gemini returns a `dishCount` in the shared result: 0 means no identifiable dish, 1 means one dish, and 2 or more means multiple dishes. Only a single dish above the confidence threshold receives a recipe. Text results are instructed to preserve the input's script, romanization, accents, and mixed-script spelling, and return a lowercase two-letter ISO 639-1 language code. Recognized language names and regional codes are normalized to their two-letter code; unsupported codes or malformed dish counts are rejected. The in-page card displays a generic error if the service worker disconnects or does not reply, so its loading indicator ends. Model identification may still be wrong, especially for rare dishes or unclear images.
 
 The Gemini client is created in `service-worker.js` with the local API key. Its `createGeminiClient` factory also accepts an injected `fetchImpl`, allowing tests to exercise the response handling without making live API calls.
 The client uses Gemini 3.1 Flash-Lite (`gemini-3.1-flash-lite`, https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-lite) with the Gemini [generateContent API](https://ai.google.dev/api/generate-content).
@@ -37,7 +37,7 @@ The client uses Gemini 3.1 Flash-Lite (`gemini-3.1-flash-lite`, https://ai.googl
    // Expected output: { ok: false, error: { code: "bad_input", ... } }
 
 
-The client has a 25-second timeout per network request. It never logs the API key or the
+The client has a 20-second timeout for the complete lookup. It never logs the API key or the
 selected text, and returns custom results for:
 - invalid input
 - network errors
@@ -65,5 +65,5 @@ selection and recipe data.
 Run the full automated test suite without calling the API:
 
 ```sh
-node --test tests/geminiClient.test.mjs tests/userSession.test.mjs tests/application.test.mjs
+node --test tests/*.test.mjs
 ```

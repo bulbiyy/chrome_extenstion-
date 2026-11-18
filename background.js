@@ -1,6 +1,10 @@
 const IMAGE_MENU_ID = "use-image-in-dishfind";
 const TEXT_MENU_ID = "use-text-in-dishfind";
 
+function lookupError(code, message) {
+  return { ok: false, error: { code, message } };
+}
+
 function processTextSelection(selectedText) {
   return chrome.storage.local.set({
     selectedText,
@@ -21,13 +25,10 @@ function processTextSelection(selectedText) {
     .then(() => result))
     .catch((error) => {
       console.error("Could not process the selected text:", error);
-      const recipeResponse = {
-        ok: false,
-        error: {
-          code: "client_unavailable",
-          message: error.message || "Could not process the selected text."
-        }
-      };
+      const recipeResponse = lookupError(
+        "client_unavailable",
+        error.message || "Could not process the selected text."
+      );
       return chrome.storage.local.set({ recipeResponse })
         .then(() => recipeResponse);
     });
@@ -70,13 +71,10 @@ function processImageSelection({
     .then(() => result))
     .catch((error) => {
       console.error("Could not process the selected image:", error);
-      const recipeResponse = {
-        ok: false,
-        error: {
-          code: "client_unavailable",
-          message: error.message || "Could not process the selected image."
-        }
-      };
+      const recipeResponse = lookupError(
+        "client_unavailable",
+        error.message || "Could not process the selected image."
+      );
       return chrome.storage.local.set({ recipeResponse })
         .then(() => recipeResponse);
     });
@@ -297,18 +295,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     ) {
       sendResponse({
         type: "COOKS_ERROR",
-        payload: { message: "The selection could not be processed." }
+        payload: lookupError("bad_input", "The selection could not be processed.")
       });
       return;
     }
  
-    const recipeResponse = {
-      ok: false,
-      error: {
-        code: "selection_error",
-        message: errorMessage
-      }
-    };
+    const recipeResponse = lookupError("selection_error", errorMessage);
     const savedSelection = selectionType === "text"
       ? { selectedText: typeof selectionValue === "string" ? selectionValue : "", selectedImageUrl: "" }
       : { selectedImageUrl: typeof selectionValue === "string" ? selectionValue : "", selectedText: "" };
@@ -322,7 +314,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         console.error("Could not save the selection processing error:", error);
         sendResponse({
           type: "COOKS_ERROR",
-          payload: { message: "Could not save the selection processing error." }
+          payload: lookupError(
+            "client_unavailable",
+            "Could not save the selection processing error."
+          )
         });
       });
     return true;
@@ -333,7 +328,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (typeof text !== "string" || !text.trim()) {
       sendResponse({
         type: "COOKS_ERROR",
-        payload: { message: "The text selection is empty." }
+        payload: lookupError("bad_input", "The text selection is empty.")
       });
       return;
     }
@@ -349,7 +344,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       console.error("Could not save the selected-text error:", error);
       sendResponse({
         type: "COOKS_ERROR",
-        payload: { message: "Could not process the selection or save its error." }
+        payload: lookupError(
+          "client_unavailable",
+          "Could not process the selection or save its error."
+        )
       });
     });
     return true;
@@ -367,7 +365,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (typeof imageUrl !== "string" || !imageUrl) {
       sendResponse({
         type: "COOKS_ERROR",
-        payload: { message: "The image URL is missing." }
+        payload: lookupError("bad_input", "The image URL is missing.")
       });
       return;
     }
@@ -390,7 +388,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         console.error("Could not save the selected image:", error);
         sendResponse({
           type: "COOKS_ERROR",
-          payload: { message: "Could not save the selected image." }
+          payload: lookupError(
+            "client_unavailable",
+            "Could not save the selected image."
+          )
         });
       });
     return true;

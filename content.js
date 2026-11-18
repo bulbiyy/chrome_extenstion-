@@ -119,7 +119,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           console.error("Could not report the selection error to the extension:", reportError);
           const response = {
             type: "COOKS_ERROR",
-            payload: { message: error.message }
+            payload: {
+              ok: false,
+              error: {
+                code: "client_unavailable",
+                message: error.message || "Could not reach Cooks."
+              }
+            }
           };
           returnResponseToPage(response);
           sendResponse(response);

@@ -9,6 +9,14 @@ import { MAX_IMAGE_DIMENSION, MAX_IMAGE_PIXELS, validateImageDimensions } from "
 
 const API_KEY = "test-api-key";
 
+function assertStructuredFailure(result, code) {
+  assert.deepEqual(Object.keys(result).sort(), ["error", "ok"]);
+  assert.equal(result.ok, false);
+  assert.equal(result.error.code, code);
+  assert.equal(typeof result.error.message, "string");
+  assert.ok(result.error.message.length > 0);
+}
+
 test("accepts image dimensions within the configured limits", () => {
   assert.deepEqual(validateImageDimensions(1920, 1080), { valid: true });
   assert.deepEqual(
@@ -27,6 +35,23 @@ test("rejects images exceeding a dimension or total pixel limit", () => {
   assert.equal(validateImageDimensions(MAX_IMAGE_DIMENSION + 1, 1).valid, false);
   assert.equal(validateImageDimensions(5000, 8001).valid, false);
   assert.equal(validateImageDimensions(MAX_IMAGE_PIXELS + 1, 1).valid, false);
+});
+
+test("returns a structured error for invalid image dimensions", async () => {
+  const detectDishFromImage = createGeminiClient({
+    apiKey: API_KEY,
+    fetchImpl: async () => {
+      throw new Error("Invalid dimensions must be rejected before fetch.");
+    },
+  });
+
+  const result = await detectDishFromImage({
+    imageUrl: "https://example.test/unknown.jpg",
+    imageWidth: 0,
+    imageHeight: 100,
+  });
+
+  assertStructuredFailure(result, "invalid_image_size");
 });
 
 function createGeminiResponse(data) {
@@ -257,11 +282,23 @@ test("does not accept an image dish guess when Gemini reports multiple dishes", 
 
 test("preserves multilingual dish names and normalizes two-letter language codes", async () => {
   const cases = [
-    { text: "arroz con pollo", dishName: "arroz con pollo", language: "ES", normalized: "es" },
+    { text: "arroz con pollo", dishName: "arroz con pollo", language: "Spanish", normalized: "es" },
     { text: "boeuf bourguignon", dishName: "boeuf bourguignon", language: "fr", normalized: "fr" },
-    { text: "カレー", dishName: "カレー", language: "ja", normalized: "ja" },
-    { text: "चना मसाला", dishName: "चना मसाला", language: "hi", normalized: "hi" },
-    { text: "pad thai", dishName: "Pad Thai", language: "en", normalized: "en" },
+    { text: "カレー", dishName: "カレー", language: "Japanese", normalized: "ja" },
+    { text: "चना मसाला", dishName: "चना मसाला", language: "Hindi", normalized: "hi" },
+    { text: "pad thai", dishName: "Pad Thai", language: "th", normalized: "th" },
+    {
+      text: "チキンカレー (chicken curry)",
+      dishName: "チキンカレー (chicken curry)",
+      language: "ja",
+      normalized: "ja",
+    },
+    {
+      text: "biryani (बिरयानी)",
+      dishName: "biryani (बिरयानी)",
+      language: "hi",
+      normalized: "hi",
+    },
   ];
 
   for (const { text, dishName, language, normalized } of cases) {
@@ -294,7 +331,8 @@ test("rejects malformed dish counts and non-ISO language labels", async () => {
   for (const invalidData of [
     { dishCount: -1, language: "en" },
     { dishCount: 1.5, language: "en" },
-    { dishCount: 1, language: "Japanese" },
+    { dishCount: 1, language: "Martian" },
+    { dishCount: 1, language: "xy" },
   ]) {
     const detectDishFromText = createGeminiClient({
       apiKey: API_KEY,
@@ -309,8 +347,7 @@ test("rejects malformed dish counts and non-ISO language labels", async () => {
 
     const result = await detectDishFromText("dinner");
 
-    assert.equal(result.ok, false);
-    assert.equal(result.error.code, "bad_response");
+    assertStructuredFailure(result, "bad_response");
   }
 });
 
@@ -339,7 +376,7 @@ test("rejects oversized image bytes before calling Gemini", async () => {
   });
 
   assert.equal(result.ok, false);
-  assert.equal(result.error.code, "image_too_large");
+  assertStructuredFailure(result, "image_too_large");
   assert.equal(requestCount, 1);
 });
 
@@ -369,7 +406,23 @@ test("checks image Content-Length before reading its body", async () => {
   });
 
   assert.equal(result.ok, false);
-  assert.equal(result.error.code, "image_too_large");
+  assertStructuredFailure(result, "image_too_large");
+});
+
+test("returns a structured image-fetch error for an inaccessible host", async () => {
+  const detectDishFromImage = createGeminiClient({
+    apiKey: API_KEY,
+    fetchImpl: async () => ({ ok: false, status: 403 }),
+  });
+
+  const result = await detectDishFromImage({
+    imageUrl: "https://example.test/blocked.jpg",
+    imageWidth: 100,
+    imageHeight: 100,
+  });
+
+  assertStructuredFailure(result, "image_fetch");
+  assert.equal(result.error.status, 403);
 });
 
 test("rejects images with unknown MIME types rather than assuming JPEG", async () => {
@@ -389,8 +442,7 @@ test("rejects images with unknown MIME types rather than assuming JPEG", async (
     imageHeight: 100,
   });
 
-  assert.equal(result.ok, false);
-  assert.equal(result.error.code, "unsupported_image_type");
+  assertStructuredFailure(result, "unsupported_image_type");
 });
 
 test("uses a known URL extension when the image host omits its MIME type", async () => {
@@ -437,7 +489,7 @@ test("uses a known URL extension when the image host omits its MIME type", async
 test("times out a slow image download", async () => {
   const detectDishFromImage = createGeminiClient({
     apiKey: API_KEY,
-    imageFetchTimeoutMs: 5,
+    requestTimeoutMs: 5,
     fetchImpl: (_url, { signal }) => new Promise((_resolve, reject) => {
       signal.addEventListener("abort", () => reject(new Error("Aborted")), { once: true });
     }),
@@ -449,8 +501,41 @@ test("times out a slow image download", async () => {
     imageHeight: 100,
   });
 
-  assert.equal(result.ok, false);
-  assert.equal(result.error.code, "timeout");
+  assertStructuredFailure(result, "timeout");
+});
+
+test("uses one abortable deadline across image download and Gemini request", async () => {
+  const signals = [];
+  const detectDishFromImage = createGeminiClient({
+    apiKey: API_KEY,
+    requestTimeoutMs: 150,
+    fetchImpl: async (url, { signal }) => {
+      signals.push(signal);
+      if (url === "https://example.test/slow.jpg") {
+        await new Promise((resolve) => setTimeout(resolve, 80));
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: (name) => name === "content-type" ? "image/jpeg" : null },
+          arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+        };
+      }
+      return new Promise((_resolve, reject) => {
+        signal.addEventListener("abort", () => reject(new Error("Aborted")), { once: true });
+      });
+    },
+  });
+
+  const result = await detectDishFromImage({
+    imageUrl: "https://example.test/slow.jpg",
+    imageWidth: 100,
+    imageHeight: 100,
+  });
+
+  assertStructuredFailure(result, "timeout");
+  assert.equal(signals.length, 2);
+  assert.equal(signals[0], signals[1]);
+  assert.equal(signals[0].aborted, true);
 });
 
 test("handles selected text that is not a dish", async () => {
@@ -539,8 +624,7 @@ test("rejects blank text input", async () => {
 
   const result = await detectDishFromText("   ");
 
-  assert.equal(result.ok, false);
-  assert.equal(result.error.code, "bad_input");
+  assertStructuredFailure(result, "bad_input");
   assert.equal(requestCount, 0);
 });
 
@@ -569,8 +653,7 @@ test("handles malformed recipe data from Gemini", async () => {
 
   const result = await detectDishFromText("soup");
 
-  assert.equal(result.ok, false);
-  assert.equal(result.error.code, "bad_response");
+  assertStructuredFailure(result, "bad_response");
 });
 
 test("rejects incoherent non-dish data from Gemini", async () => {
@@ -635,8 +718,7 @@ test("handles Gemini API HTTP errors", async () => {
 
   const result = await detectDishFromText("sushi");
 
-  assert.equal(result.ok, false);
-  assert.equal(result.error.code, "api_error");
+  assertStructuredFailure(result, "api_error");
   assert.equal(result.error.status, 403);
 });
 
@@ -650,8 +732,7 @@ test("handles network failure", async () => {
 
   const result = await detectDishFromText("sushi");
 
-  assert.equal(result.ok, false);
-  assert.equal(result.error.code, "network");
+  assertStructuredFailure(result, "network");
 });
 
 test("handles request timeout", async () => {
@@ -665,6 +746,5 @@ test("handles request timeout", async () => {
 
   const result = await detectDishFromText("sushi");
 
-  assert.equal(result.ok, false);
-  assert.equal(result.error.code, "timeout");
+  assertStructuredFailure(result, "timeout");
 });
