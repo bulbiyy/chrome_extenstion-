@@ -16,6 +16,7 @@ class FakeElement {
     this.children = [];
     this.listeners = new Map();
     this.attributes = new Map();
+    this.files = [];
   }
 
   addEventListener(type, listener) {
@@ -43,6 +44,18 @@ class FakeElement {
   }
 }
 
+class FakeDataTransfer {
+  constructor() {
+    const files = [];
+    this.items = {
+      add(file) {
+        files.push(file);
+      },
+    };
+    this.files = files;
+  }
+}
+
 function createPopupHarness(storageData = {}) {
   const ids = [
     "dish-name",
@@ -64,6 +77,9 @@ function createPopupHarness(storageData = {}) {
     "dish-image",
     "save-button",
     "save-status",
+    "recipe-files",
+    "file-selection-status",
+    "file-upload-button",
   ];
   const elements = new Map(ids.map((id) => [id, new FakeElement(id)]));
   elements.get("dish-name").textContent = "Creamy Tomato Pasta";
@@ -100,6 +116,7 @@ function createPopupHarness(storageData = {}) {
         return "user-123";
       },
     },
+    DataTransfer: FakeDataTransfer,
     URL,
   });
 
@@ -206,6 +223,23 @@ test("saves a valid dish for the active user and toggles it off", async () => {
     ["Boil the noodles until tender.", "Whisk the sauce and toss with noodles."],
   );
   assert.equal(elements.get("save-button").attributes.get("aria-pressed"), "false");
+});
+
+test("rejects uploaded images over 20 MiB and keeps only one eligible image", async () => {
+  const { context, elements } = createPopupHarness();
+  await loadPopupScripts(context);
+  const fileInput = elements.get("recipe-files");
+  fileInput.files = [
+    { name: "meal.png", type: "image/png", size: 1024 },
+    { name: "too-large.jpg", type: "image/jpeg", size: 20 * 1024 * 1024 + 1 },
+    { name: "extra.webp", type: "image/webp", size: 512 },
+  ];
+
+  fileInput.dispatch("change");
+
+  assert.deepEqual(fileInput.files.map((file) => file.name), ["meal.png"]);
+  assert.match(elements.get("file-selection-status").textContent, /over 20 MiB: too-large\.jpg/);
+  assert.match(elements.get("file-selection-status").textContent, /Only one file can be selected/);
 });
 
 test("shows a clear no-dish result without leaving the demo recipe visible", async () => {
