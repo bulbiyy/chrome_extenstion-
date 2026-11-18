@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createGeminiClient, DISH_CONFIDENCE_THRESHOLD } from "../src/background/geminiClient.js";
-import { MAX_IMAGE_DIMENSION, MAX_IMAGE_PIXELS, validateImageDimensions } from "../src/shared/imageValidation.js";
+import {
+  MAX_IMAGE_DIMENSION,
+  MAX_IMAGE_PIXELS,
+  MAX_WEB_IMAGE_BYTES,
+  validateImageDimensions,
+} from "../src/shared/imageValidation.js";
 
 const API_KEY = "test-api-key";
 
@@ -132,6 +137,58 @@ test("detects a dish from an image using the same response format as text", asyn
   assert.equal(requests.length, 2);
   assert.equal(JSON.parse(requests[1].options.body).contents[0].parts[0].text.includes("Pad thai bowl"), true);
   assert.equal(JSON.parse(requests[1].options.body).contents[0].parts[1].inlineData.mimeType, "image/jpeg");
+});
+
+test("rejects oversized web images from Content-Length before reading the body", async () => {
+  let imageBodyRead = false;
+  const detectDishFromImage = createGeminiClient({
+    apiKey: API_KEY,
+    fetchImpl: async () => ({
+      ok: true,
+      status: 200,
+      headers: {
+        get: (name) => name === "content-length"
+          ? String(MAX_WEB_IMAGE_BYTES + 1)
+          : "image/jpeg",
+      },
+      arrayBuffer: async () => {
+        imageBodyRead = true;
+        return new ArrayBuffer(0);
+      },
+    }),
+  });
+
+  const result = await detectDishFromImage({
+    imageUrl: "https://example.test/large.jpg",
+    imageWidth: 100,
+    imageHeight: 100,
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.error.code, "image_too_large");
+  assert.equal(imageBodyRead, false);
+});
+
+test("rejects oversized web image bytes when Content-Length is unavailable", async () => {
+  const oversizedImage = new Uint8Array(MAX_WEB_IMAGE_BYTES + 1);
+  const detectDishFromImage = createGeminiClient({
+    apiKey: API_KEY,
+    fetchImpl: async () => ({
+      ok: true,
+      status: 200,
+      headers: { get: (name) => name === "content-type" ? "image/jpeg" : null },
+      arrayBuffer: async () => oversizedImage.buffer,
+    }),
+  });
+
+  const result = await detectDishFromImage({
+    imageUrl: "https://example.test/large.jpg",
+    imageWidth: 100,
+    imageHeight: 100,
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.error.code, "image_too_large");
 });
 
 test("handles selected text that is not a dish", async () => {
