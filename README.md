@@ -6,9 +6,9 @@ The background client exports `detectDishFromText(selectedText)`. When a text se
 
 Image selections are captured and displayed by the popup, but the Gemini client currently supports text only. Image identification needs a separate multimodal request implementation.
 
-The popup's file picker is currently a UI placeholder: users can choose files or drop them onto the Add files button. It accepts JPEG, PNG, WebP, HEIC, and HEIF images and rejects other types, showing selection/rejection status locally. Files are not sent out to Gemini yet.
+The popup's file picker is currently a UI placeholder: users can choose one file or drop files onto the Add files button. It accepts only one JPEG, PNG, WebP, HEIC, or HEIF image up to 20 MiB, rejects other types, oversized files, and any additional files, and shows selection/rejection status locally. Files are not sent out to Gemini yet.
 
-For image selections, the background reads the clicked image element's intrinsic dimensions in the frame where it was clicked and includes its width, height, and alt text in the request package. It rejects images whose dimensions cannot be verified, exceed 8,192 pixels on either side, or exceed 40 megapixels total. This validates pixel dimensions only; the current package sends an image URL, so it does not measure the image file's byte size.
+For image selections, the background reads the clicked image element's intrinsic dimensions in the frame where it was clicked and includes its width, height, and alt text in the request package. It rejects images over 15 MiB, whose dimensions cannot be verified, that exceed 8,192 pixels on either side, or that exceed 40 megapixels total. The byte-size cap is checked against the download's `Content-Length` when available and against the downloaded bytes before sending them to Gemini.
 
 The Gemini client is created in `service-worker.js` with the local API key. Its `createGeminiClient` factory also accepts an injected `fetchImpl`, allowing tests to exercise the response handling without making live API calls.
 The client uses Gemini 3.1 Flash-Lite (`gemini-3.1-flash-lite`, https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-lite) with the Gemini [generateContent API](https://ai.google.dev/api/generate-content).
