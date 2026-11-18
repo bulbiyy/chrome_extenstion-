@@ -14,11 +14,17 @@
   box-sizing: border-box;
 }
 
+html {
+  max-width: 800px;
+  max-height: 600px;
+  overflow: auto;
+}
+
 [hidden] {
   display: none !important;
 }
  
-/*layout for the toolbar popup */
+/* Popup layout */
 body,
 .cooks-shell {
   width: 360px;
@@ -29,13 +35,23 @@ body,
     BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
  
-/* beige backdrop fills the popup window*/
+/* Popup backdrop */
 body {
-  min-height: 560px;
-  background: #f1eee7;
+  width: 360px;
+  max-width: 800px;
+  max-height: 600px;
+  min-height: 0;
+  padding: 0;
+  overflow-y: auto;
+  background: transparent;
+}
+
+body > .recipe-card {
+  border-radius: 0;
+  box-shadow: none;
 }
  
-/* no backdrop or frame*/
+/* In-page card shell */
 .cooks-shell {
   background: transparent;
 }
@@ -52,7 +68,6 @@ a {
 .recipe-card {
   overflow: hidden;
   background: var(--paper);
-  border: 1px solid rgba(48, 43, 31, 0.08);
   border-radius: 22px;
   box-shadow: 0 8px 28px rgba(48, 43, 31, 0.10);
 }
@@ -86,7 +101,7 @@ a {
   letter-spacing: -0.3px;
 }
  
-/* Like and Save buttons */
+/* Recipe actions */
  
 .header-actions {
   display: flex;
@@ -101,7 +116,7 @@ a {
   width: 31px;
   height: 31px;
   padding: 0;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 50%;
   background: white;
   color: var(--accent);
@@ -109,11 +124,10 @@ a {
   font-size: 21px;
   line-height: 1;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: background 0.15s ease;
 }
  
 .icon-button:hover {
-  border-color: #d9a293;
   background: #fff7f2;
 }
  
@@ -124,18 +138,16 @@ a {
  
 .like-button[aria-pressed="true"] {
   background: #fff0eb;
-  border-color: #efb5a7;
 }
  
-/* Saved button state */
+/* Saved state */
  
 .save-button[aria-pressed="true"] {
   background: #edf1e5;
-  border-color: #cbd5bc;
   color: #536343;
 }
  
-/* Hero image */
+/* Recipe image */
  
 .hero-wrap {
   position: relative;
@@ -155,7 +167,6 @@ a {
   left: 13px;
   bottom: 12px;
   padding: 6px 9px;
-  border: 1px solid rgba(255, 255, 255, 0.7);
   border-radius: 999px;
   background: rgba(255, 253, 248, 0.92);
   font-size: 9px;
@@ -198,12 +209,37 @@ h1 {
   line-height: 1.4;
 }
 
+.recipe-status.is-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.recipe-status.is-loading::before {
+  content: "";
+  width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
+  border: 2px solid #e8c9bf;
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: recipe-loading-spin 0.75s linear infinite;
+}
+
+@keyframes recipe-loading-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recipe-status.is-loading::before { animation-duration: 2s; }
+}
+
 .file-upload-button {
   display: flex;
   align-items: center;
   gap: 4px;
   padding: 6px 8px;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 999px;
   background: white;
   color: var(--accent-dark);
@@ -215,14 +251,10 @@ h1 {
 
 .file-upload-button:hover {
   background: #fff0e8;
-  border-color: #d9a293;
 }
 
 .file-upload-button.is-dragging {
   background: #fff0e8;
-  border-color: var(--accent);
-  outline: 2px dashed var(--accent);
-  outline-offset: 2px;
 }
 
 .file-upload-button:focus-within {
@@ -255,14 +287,13 @@ h1 {
   line-height: 1.5;
 }
  
-/* Cooking time, servings, and difficulty */
+/* Recipe details */
  
 .meta-row {
   display: flex;
   align-items: center;
   gap: 13px;
   padding: 10px 0 13px;
-  border-bottom: 1px solid var(--line);
   color: var(--muted);
   font-size: 10px;
 }
@@ -281,7 +312,7 @@ h1 {
   font-weight: 700;
 }
  
-/* Section headings */
+/* Collapsible sections */
  
 .section-heading {
   display: flex;
@@ -301,6 +332,34 @@ h2 {
   font-size: 8px;
   font-weight: 800;
   letter-spacing: 1px;
+}
+
+.section-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.section-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+.section-chevron {
+  color: var(--muted);
+  font: 16px/1 ui-sans-serif, system-ui, sans-serif;
+  transition: transform 0.15s ease;
+}
+
+.section-toggle[aria-expanded="false"] .section-chevron {
+  transform: rotate(-90deg);
 }
  
 /* Ingredients */
@@ -329,11 +388,11 @@ h2 {
   left: 0;
   width: 6px;
   height: 6px;
-  border: 1.5px solid var(--accent);
+  background: var(--accent);
   border-radius: 50%;
 }
  
-/* Cooking instructions */
+/* Instructions */
  
 .steps-heading {
   margin-top: 15px;
@@ -371,7 +430,7 @@ h2 {
   font-weight: 800;
 }
  
-/* YouTube recipe link */
+/* Video link */
  
 .video-link {
   display: flex;
@@ -379,7 +438,6 @@ h2 {
   gap: 10px;
   margin-top: 15px;
   padding: 10px;
-  border: 1px solid #f0d4ca;
   border-radius: 13px;
   background: #fff7f2;
   color: var(--ink);
@@ -429,7 +487,6 @@ h2 {
 .references-block {
   margin-top: 14px;
   padding-top: 12px;
-  border-top: 1px solid var(--line);
 }
  
 .references-block h2 {
@@ -445,7 +502,6 @@ h2 {
  
 .reference-list a {
   padding: 5px 8px;
-  border: 1px solid var(--line);
   border-radius: 999px;
   color: #68675e;
   font-size: 9px;
@@ -453,7 +509,6 @@ h2 {
 }
  
 .reference-list a:hover {
-  border-color: #d9a293;
   color: var(--accent-dark);
 }
  
@@ -466,14 +521,14 @@ h2 {
   font-size: 9px;
 }
  
-/* Keyboard accessibility */
+/* Keyboard focus */
  
 a:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
  
-/* Reduced motion preference */
+/* Reduced motion */
  
 @media (prefers-reduced-motion: reduce) {
   *,

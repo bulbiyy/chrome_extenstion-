@@ -82,7 +82,7 @@ function processImageSelection({
     });
 }
 
-// Rebuild the image and text context-menu options after installation or update.
+// Register context-menu actions
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll(() => {
     if (chrome.runtime.lastError) {
@@ -118,7 +118,7 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
-// Process selected text directly; forward image selections through the content script.
+// Route text and image lookups
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId !== IMAGE_MENU_ID && info.menuItemId !== TEXT_MENU_ID) {
     return;
@@ -176,12 +176,6 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     }
  
     selectionType = "text";
-    processTextSelection(fallbackText)
-      .then(() => chrome.action.openPopup({ windowId: tab.windowId }))
-      .catch((error) => {
-        console.error("Could not save the selected text or open the recipe popup:", error);
-      });
-    return;
   }
  
   if (typeof tab.id !== "number") {
@@ -240,7 +234,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     });
 });
  
-// Process text/image selections with Gemini
+// Process selections with Gemini
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (sender.id !== chrome.runtime.id) {
     return;

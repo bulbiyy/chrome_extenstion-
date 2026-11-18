@@ -6,7 +6,7 @@ globalThis.__cooksContentScriptLoaded = true;
 
 let contextImage = null;
 
-// Remember the image under the pointer when the user opens the context menu.
+// Capture context-menu image
 document.addEventListener("contextmenu", (event) => {
   const target = event.target;
   contextImage = target instanceof HTMLImageElement
@@ -17,7 +17,7 @@ document.addEventListener("contextmenu", (event) => {
     : null;
 }, true);
 
-// Package highlighted text and its source page for the background handler.
+// Build selection requests
 function createTextRequestPackage(text) {
   return {
     type: "IDENTIFY_DISH_FROM_TEXT",
@@ -41,7 +41,7 @@ function createImageRequestPackage(imageUrl, altText = "", imagePermissionGrante
   };
 }
 
-// Choose the relevant selection, build its request package, and send it to background.
+// Send the selected text or image
 function sendSelectionPackage(message) {
   const {
     selectionType,
@@ -50,7 +50,7 @@ function sendSelectionPackage(message) {
     imagePermissionGranted
   } = message.payload || {};
   let requestPackage;
-  const MAX_TEXT_LENGTH = 1000; // Define the maximum allowed length for selected text
+  const MAX_TEXT_LENGTH = 1000;
 
   if (selectionType === "text") {
     const selectedText = window.getSelection()?.toString().trim() || fallbackText?.trim();
@@ -78,7 +78,7 @@ function sendSelectionPackage(message) {
   return chrome.runtime.sendMessage(requestPackage);
 }
 
-// Relay the background response into the page context.
+// Return the response to the page
 function returnResponseToPage(response) {
   window.postMessage(
     {
@@ -90,7 +90,7 @@ function returnResponseToPage(response) {
   );
 }
 
-// Handle selection-capture requests sent by the background service worker.
+// Handle selection capture
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type !== "COOKS_CAPTURE_SELECTION") {
     return;

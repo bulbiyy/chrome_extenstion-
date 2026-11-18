@@ -1,4 +1,4 @@
-// Retrieve the saved highlighted text, or null when there is no usable selection.
+// Read saved selection data
 async function getSelectedText() {
   const result = await chrome.storage.local.get("selectedText");
   return typeof result.selectedText === "string" && result.selectedText.trim()
@@ -6,7 +6,6 @@ async function getSelectedText() {
     : null;
 }
 
-// Retrieve the saved image URL, or null when no image was selected.
 async function getSelectedImage() {
   const result = await chrome.storage.local.get("selectedImageUrl");
   return typeof result.selectedImageUrl === "string" && result.selectedImageUrl
@@ -14,7 +13,6 @@ async function getSelectedImage() {
     : null;
 }
 
-// Retrieve the last Gemini result or processing error for the popup tester.
 async function getRecipeResponse() {
   const result = await chrome.storage.local.get("recipeResponse");
   return result.recipeResponse || null;
