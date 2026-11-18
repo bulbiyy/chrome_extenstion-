@@ -242,8 +242,10 @@ recipeFiles?.addEventListener("change", () => {
   }
 
   const files = Array.from(recipeFiles.files || []);
-  const acceptedFiles = files.filter(isSupportedImage);
+  const supportedFiles = files.filter(isSupportedImage);
+  const acceptedFiles = supportedFiles.slice(0, 1);
   const rejectedFiles = files.filter((file) => !isSupportedImage(file));
+  const additionalFiles = supportedFiles.slice(1);
   const acceptedFileList = new DataTransfer();
   acceptedFiles.forEach((file) => acceptedFileList.items.add(file));
   recipeFiles.files = acceptedFileList.files;
@@ -257,6 +259,11 @@ recipeFiles?.addEventListener("change", () => {
   if (rejectedFiles.length) {
     messages.push(
       `Rejected unsupported file types: ${rejectedFiles.map((file) => file.name).join(", ")}. Choose JPEG, PNG, WebP, HEIC, or HEIF images.`
+    );
+  }
+  if (additionalFiles.length) {
+    messages.push(
+      `Only one file can be selected. Not selected: ${additionalFiles.map((file) => file.name).join(", ")}.`
     );
   }
 
