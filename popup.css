@@ -209,6 +209,17 @@ h1 {
   line-height: 1.4;
 }
 
+.save-status {
+  margin: 8px 0;
+  color: var(--accent-dark);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.save-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
 .recipe-status.is-loading {
   display: flex;
   align-items: center;
