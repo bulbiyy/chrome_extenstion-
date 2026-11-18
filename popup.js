@@ -210,6 +210,7 @@ const recipeFiles = document.getElementById("recipe-files");
 const fileSelectionStatus = document.getElementById("file-selection-status");
 const fileUploadButton = document.getElementById("file-upload-button");
 let fileDragDepth = 0;
+const MAX_UPLOADED_IMAGE_BYTES = 20 * 1024 * 1024;  // 15 MiB
 const supportedImageTypes = new Set([
   "image/jpeg",
   "image/png",
@@ -243,9 +244,15 @@ recipeFiles?.addEventListener("change", () => {
 
   const files = Array.from(recipeFiles.files || []);
   const supportedFiles = files.filter(isSupportedImage);
-  const acceptedFiles = supportedFiles.slice(0, 1);
+  const oversizedFiles = supportedFiles.filter(
+    (file) => file.size > MAX_UPLOADED_IMAGE_BYTES
+  );
+  const eligibleFiles = supportedFiles.filter(
+    (file) => file.size <= MAX_UPLOADED_IMAGE_BYTES
+  );
+  const acceptedFiles = eligibleFiles.slice(0, 1);
   const rejectedFiles = files.filter((file) => !isSupportedImage(file));
-  const additionalFiles = supportedFiles.slice(1);
+  const additionalFiles = eligibleFiles.slice(1);
   const acceptedFileList = new DataTransfer();
   acceptedFiles.forEach((file) => acceptedFileList.items.add(file));
   recipeFiles.files = acceptedFileList.files;
@@ -259,6 +266,11 @@ recipeFiles?.addEventListener("change", () => {
   if (rejectedFiles.length) {
     messages.push(
       `Rejected unsupported file types: ${rejectedFiles.map((file) => file.name).join(", ")}. Choose JPEG, PNG, WebP, HEIC, or HEIF images.`
+    );
+  }
+  if (oversizedFiles.length) {
+    messages.push(
+      `Rejected files over 20 MiB: ${oversizedFiles.map((file) => file.name).join(", ")}.`
     );
   }
   if (additionalFiles.length) {
