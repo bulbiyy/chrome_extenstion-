@@ -1,3 +1,4 @@
+export const MAX_WEB_IMAGE_BYTES = 15 * 1024 * 1024;
 export const MAX_IMAGE_DIMENSION = 8192;
 export const MAX_IMAGE_PIXELS = 40_000_000;
 
