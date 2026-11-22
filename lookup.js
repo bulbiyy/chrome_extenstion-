@@ -21,16 +21,6 @@
     ].filter(Boolean);
     return details.length ? `${message} (${details.join(", ")})` : message;
   }
-
-  function unavailableResult() {
-    return {
-      ok: false,
-      error: {
-        code: "client_unavailable",
-        message: "Cooks could not complete this lookup. Please try again."
-      }
-    };
-  }
  
   // Open one lookup card at a time
   async function ask(request, openOptions) {
@@ -43,16 +33,16 @@
     let response;
     try {
       response = await chrome.runtime.sendMessage(request);
-    } catch {
+    } catch (error) {
       if (id === lookupId && card.isOpen()) {
-        card.showMessage(describeError(unavailableResult()));
+        card.showMessage("Could not reach Cooks. Reload this page and try again.");
       }
       return;
     }
  
     if (id !== lookupId || !card.isOpen()) return; 
  
-    const result = response?.payload || unavailableResult();
+    const result = response?.payload;
     if (response?.type === "COOKS_RECIPE_RESULT" && result?.ok) {
       card.update(result.data);
     } else {
@@ -123,7 +113,7 @@
     return closestImage?.currentSrc || closestImage?.src || "";
   }
  
-  function runImageLookup(imageUrl, imageDetails, imagePermissionGranted) {
+  function runImageLookup(imageUrl, imageDetails) {
     return ask(
       {
         type: "IDENTIFY_DISH_FROM_IMAGE",
@@ -132,8 +122,7 @@
           altText: imageDetails?.altText || "",
           imageWidth: imageDetails?.imageWidth,
           imageHeight: imageDetails?.imageHeight,
-          pageUrl: window.location.href,
-          imagePermissionGranted
+          pageUrl: window.location.href
         }
       },
       { imageUrl, title: "Selected image", status: "Looking at this image…", loading: true }
@@ -146,14 +135,11 @@
       selectionType,
       fallbackText,
       fallbackImageUrl,
-      fallbackImageDetails,
-      imagePermissionGranted
+      fallbackImageDetails
     } = message.payload || {};
-
+ 
     if (selectionType === "image") {
-      if (fallbackImageUrl) {
-        runImageLookup(fallbackImageUrl, fallbackImageDetails, imagePermissionGranted);
-      }
+      if (fallbackImageUrl) runImageLookup(fallbackImageUrl, fallbackImageDetails);
       return;
     }
  

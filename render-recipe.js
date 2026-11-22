@@ -176,19 +176,11 @@
 
     if (!model) {
       if (data?.isDish === false) {
-        if (data.dishCount >= 2) {
-          renderMessage(
-            "The selection contains multiple dishes. Choose one dish at a time.",
-            "Multiple dishes found",
-            root,
-          );
-        } else {
-          renderMessage(
-            "The selection was not identified as a dish. Try another selection.",
-            "No dish found",
-            root,
-          );
-        }
+        renderMessage(
+          "This selection was not identified as a dish. Try selecting a dish name or food image.",
+          "No dish found",
+          root,
+        );
       } else {
         renderMessage(
           "The recipe service returned an incomplete result. Try again.",

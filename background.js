@@ -1,10 +1,6 @@
 const IMAGE_MENU_ID = "use-image-in-dishfind";
 const TEXT_MENU_ID = "use-text-in-dishfind";
 
-function lookupError(code, message) {
-  return { ok: false, error: { code, message } };
-}
-
 function processTextSelection(selectedText) {
   return chrome.storage.local.set({
     selectedText,
@@ -25,37 +21,24 @@ function processTextSelection(selectedText) {
     .then(() => result))
     .catch((error) => {
       console.error("Could not process the selected text:", error);
-      const recipeResponse = lookupError(
-        "client_unavailable",
-        error.message || "Could not process the selected text."
-      );
+      const recipeResponse = {
+        ok: false,
+        error: {
+          code: "client_unavailable",
+          message: error.message || "Could not process the selected text."
+        }
+      };
       return chrome.storage.local.set({ recipeResponse })
         .then(() => recipeResponse);
     });
 }
 
-function processImageSelection({
-  imageUrl,
-  altText = "",
-  pageUrl = "",
-  imageWidth,
-  imageHeight,
-  imagePermissionGranted = true
-}) {
+function processImageSelection({ imageUrl, altText = "", pageUrl = "", imageWidth, imageHeight }) {
   return chrome.storage.local.set({
     selectedText: "",
     selectedImageUrl: imageUrl,
     recipeResponse: null
   }).then(() => {
-    if (!imagePermissionGranted) {
-      return {
-        ok: false,
-        error: {
-          code: "permission_denied",
-          message: "Allow Cooks to access this image's website to identify it."
-        }
-      };
-    }
     const clientReady = globalThis.geminiClientReady;
     if (!clientReady) {
       throw new Error("Gemini image detection did not initialize. Check the service worker console.");
@@ -71,10 +54,13 @@ function processImageSelection({
     .then(() => result))
     .catch((error) => {
       console.error("Could not process the selected image:", error);
-      const recipeResponse = lookupError(
-        "client_unavailable",
-        error.message || "Could not process the selected image."
-      );
+      const recipeResponse = {
+        ok: false,
+        error: {
+          code: "client_unavailable",
+          message: error.message || "Could not process the selected image."
+        }
+      };
       return chrome.storage.local.set({ recipeResponse })
         .then(() => recipeResponse);
     });
@@ -130,7 +116,6 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   let selectionType;
   let fallbackText;
   let fallbackImageUrl;
-  let imagePermissionPromise = Promise.resolve(true);
   if (info.menuItemId === IMAGE_MENU_ID) {
     if (!info.srcUrl) {
       return;
@@ -148,25 +133,9 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       console.error("Cooks can only use images with HTTP or HTTPS URLs.");
       return;
     }
-
+ 
     selectionType = "image";
     fallbackImageUrl = imageUrl.href;
-    if (chrome.permissions?.request) {
-      try {
-        imagePermissionPromise = chrome.permissions.request({
-          origins: [`${imageUrl.origin}/*`]
-        }).catch((error) => {
-          console.error("Could not request access to the selected image host:", error);
-          return false;
-        });
-      } catch (error) {
-        console.error("Could not request access to the selected image host:", error);
-        imagePermissionPromise = Promise.resolve(false);
-      }
-    } else {
-      console.error("The permissions API is unavailable; image access cannot be requested.");
-      imagePermissionPromise = Promise.resolve(false);
-    }
   } else {
     fallbackText = info.selectionText?.trim();
     if (!fallbackText) {
@@ -210,8 +179,8 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       }).then((results) => results[0]?.result || null)
     : Promise.resolve(null);
 
-  Promise.all([readImageDetails, imagePermissionPromise])
-    .then(([imageDetails, imagePermissionGranted]) => chrome.scripting.executeScript({
+  readImageDetails
+    .then((imageDetails) => chrome.scripting.executeScript({
       target: { tabId: tab.id, frameIds: [info.frameId ?? 0] },
       files: ["render-recipe.js", "shadow-card.js", "lookup.js"]
     }).then(() => chrome.tabs.sendMessage(tab.id, {
@@ -220,8 +189,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
         selectionType,
         fallbackText,
         fallbackImageUrl,
-        fallbackImageDetails: imageDetails,
-        imagePermissionGranted
+        fallbackImageDetails: imageDetails
       }
     }, { frameId: info.frameId ?? 0 })))
     .catch((error) => {
@@ -295,12 +263,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     ) {
       sendResponse({
         type: "COOKS_ERROR",
-        payload: lookupError("bad_input", "The selection could not be processed.")
+        payload: { message: "The selection could not be processed." }
       });
       return;
     }
  
-    const recipeResponse = lookupError("selection_error", errorMessage);
+    const recipeResponse = {
+      ok: false,
+      error: {
+        code: "selection_error",
+        message: errorMessage
+      }
+    };
     const savedSelection = selectionType === "text"
       ? { selectedText: typeof selectionValue === "string" ? selectionValue : "", selectedImageUrl: "" }
       : { selectedImageUrl: typeof selectionValue === "string" ? selectionValue : "", selectedText: "" };
@@ -314,10 +288,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         console.error("Could not save the selection processing error:", error);
         sendResponse({
           type: "COOKS_ERROR",
-          payload: lookupError(
-            "client_unavailable",
-            "Could not save the selection processing error."
-          )
+          payload: { message: "Could not save the selection processing error." }
         });
       });
     return true;
@@ -328,7 +299,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (typeof text !== "string" || !text.trim()) {
       sendResponse({
         type: "COOKS_ERROR",
-        payload: lookupError("bad_input", "The text selection is empty.")
+        payload: { message: "The text selection is empty." }
       });
       return;
     }
@@ -344,10 +315,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       console.error("Could not save the selected-text error:", error);
       sendResponse({
         type: "COOKS_ERROR",
-        payload: lookupError(
-          "client_unavailable",
-          "Could not process the selection or save its error."
-        )
+        payload: { message: "Could not process the selection or save its error." }
       });
     });
     return true;
@@ -359,25 +327,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       altText,
       pageUrl,
       imageWidth,
-      imageHeight,
-      imagePermissionGranted
+      imageHeight
     } = message.payload || {};
     if (typeof imageUrl !== "string" || !imageUrl) {
       sendResponse({
         type: "COOKS_ERROR",
-        payload: lookupError("bad_input", "The image URL is missing.")
+        payload: { message: "The image URL is missing." }
       });
       return;
     }
 
-    processImageSelection({
-      imageUrl,
-      altText,
-      pageUrl,
-      imageWidth,
-      imageHeight,
-      imagePermissionGranted
-    })
+    processImageSelection({ imageUrl, altText, pageUrl, imageWidth, imageHeight })
       .then((result) => {
         sendResponse({
           type: result?.ok ? "COOKS_RECIPE_RESULT" : "COOKS_ERROR",
@@ -388,10 +348,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         console.error("Could not save the selected image:", error);
         sendResponse({
           type: "COOKS_ERROR",
-          payload: lookupError(
-            "client_unavailable",
-            "Could not save the selected image."
-          )
+          payload: { message: "Could not save the selected image." }
         });
       });
     return true;
