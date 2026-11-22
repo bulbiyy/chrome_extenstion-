@@ -28,27 +28,20 @@ function createTextRequestPackage(text) {
   };
 }
 
-// Package the selected image URL, optional alt text, and source page.
-function createImageRequestPackage(imageUrl, altText = "", imagePermissionGranted = true) {
+function createImageRequestPackage(imageUrl, altText = "") {
   return {
     type: "IDENTIFY_DISH_FROM_IMAGE",
     payload: {
       imageUrl,
       altText,
-      pageUrl: window.location.href,
-      imagePermissionGranted
+      pageUrl: window.location.href
     }
   };
 }
 
 // Send the selected text or image
 function sendSelectionPackage(message) {
-  const {
-    selectionType,
-    fallbackText,
-    fallbackImageUrl,
-    imagePermissionGranted
-  } = message.payload || {};
+  const { selectionType, fallbackText, fallbackImageUrl } = message.payload || {};
   let requestPackage;
   const MAX_TEXT_LENGTH = 1000;
 
@@ -68,8 +61,7 @@ function sendSelectionPackage(message) {
     }
     requestPackage = createImageRequestPackage(
       imageUrl,
-      contextImage?.altText || "",
-      imagePermissionGranted !== false
+      contextImage?.altText || ""
     );
   } else {
     throw new Error("Unsupported selection type.");
@@ -119,13 +111,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           console.error("Could not report the selection error to the extension:", reportError);
           const response = {
             type: "COOKS_ERROR",
-            payload: {
-              ok: false,
-              error: {
-                code: "client_unavailable",
-                message: error.message || "Could not reach Cooks."
-              }
-            }
+            payload: { message: error.message }
           };
           returnResponseToPage(response);
           sendResponse(response);
