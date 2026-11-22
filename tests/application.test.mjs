@@ -11,15 +11,22 @@ class FakeElement {
     this.id = id;
     this.textContent = "";
     this.hidden = false;
+    this.disabled = false;
     this.dataset = {};
     this.children = [];
     this.listeners = new Map();
+    this.attributes = new Map();
+    this.files = [];
   }
 
   addEventListener(type, listener) {
     const listeners = this.listeners.get(type) || [];
     listeners.push(listener);
     this.listeners.set(type, listeners);
+  }
+
+  setAttribute(name, value) {
+    this.attributes.set(name, value);
   }
 
   dispatch(type) {
@@ -34,6 +41,18 @@ class FakeElement {
 
   replaceChildren(...children) {
     this.children = [...children];
+  }
+}
+
+class FakeDataTransfer {
+  constructor() {
+    const files = [];
+    this.items = {
+      add(file) {
+        files.push(file);
+      },
+    };
+    this.files = files;
   }
 }
 
@@ -56,6 +75,11 @@ function createPopupHarness(storageData = {}) {
     "references-block",
     "footer-note",
     "dish-image",
+    "save-button",
+    "save-status",
+    "recipe-files",
+    "file-selection-status",
+    "file-upload-button",
   ];
   const elements = new Map(ids.map((id) => [id, new FakeElement(id)]));
   elements.get("dish-name").textContent = "Creamy Tomato Pasta";
@@ -73,6 +97,9 @@ function createPopupHarness(storageData = {}) {
           const names = Array.isArray(keys) ? keys : [keys];
           return Object.fromEntries(names.map((key) => [key, storageData[key]]));
         },
+        async set(values) {
+          Object.assign(storageData, values);
+        },
       },
     },
     runtime: {
@@ -84,10 +111,16 @@ function createPopupHarness(storageData = {}) {
     document,
     location: { protocol: "https:" },
     console: { error() {}, log() {} },
+    CooksUserSession: {
+      async getCurrentUser() {
+        return "user-123";
+      },
+    },
+    DataTransfer: FakeDataTransfer,
     URL,
   });
 
-  return { context, elements, imageTag };
+  return { context, elements, imageTag, storageData };
 }
 
 async function loadPopupScripts(context) {
@@ -138,6 +171,75 @@ test("displays the recipe response in the popup", async () => {
     ["Soak the noodles.", "Stir-fry and serve."],
   );
   assert.equal(elements.get("recipe-status").hidden, true);
+  assert.equal(elements.get("save-button").disabled, false);
+});
+
+test("saves a valid dish for the active user and toggles it off", async () => {
+  const recipeResponse = {
+    ok: true,
+    data: {
+      isDish: true,
+      confidence: 0.94,
+      dishName: "Pad Thai",
+      language: "en",
+      recipe: {
+        ingredients: ["200 g rice noodles", "1 egg"],
+        steps: ["Soak the noodles.", "Stir-fry and serve."],
+      },
+    },
+  };
+  const { context, elements, storageData } = createPopupHarness({ recipeResponse });
+  await loadPopupScripts(context);
+  await vm.runInContext("loadRecipeResponse()", context);
+
+  await vm.runInContext("toggleSavedRecipe()", context);
+  const savedKey = "cooksSavedRecipes:user-123";
+  assert.equal(storageData[savedKey].length, 1);
+  assert.equal(storageData[savedKey][0].dishName, "Pad Thai");
+  assert.equal(elements.get("save-button").attributes.get("aria-pressed"), "true");
+  assert.match(elements.get("save-status").textContent, /saved to your account/);
+
+  storageData.recipeResponse = {
+    ok: true,
+    data: {
+      ...recipeResponse.data,
+      recipe: {
+        ingredients: ["200 g rice noodles", "1 egg", "2 tbsp sauce"],
+        steps: ["Boil the noodles until tender.", "Whisk the sauce and toss with noodles."],
+      },
+    },
+  };
+  await vm.runInContext("loadRecipeResponse()", context);
+  await vm.runInContext("toggleSavedRecipe()", context);
+  assert.equal(storageData[savedKey].length, 2);
+  assert.equal(storageData[savedKey][1].dishName, "Pad Thai");
+
+  storageData.recipeResponse = recipeResponse;
+  await vm.runInContext("loadRecipeResponse()", context);
+  await vm.runInContext("toggleSavedRecipe()", context);
+  assert.equal(storageData[savedKey].length, 1);
+  assert.deepEqual(
+    Array.from(storageData[savedKey][0].recipe.steps),
+    ["Boil the noodles until tender.", "Whisk the sauce and toss with noodles."],
+  );
+  assert.equal(elements.get("save-button").attributes.get("aria-pressed"), "false");
+});
+
+test("rejects uploaded images over 20 MiB and keeps only one eligible image", async () => {
+  const { context, elements } = createPopupHarness();
+  await loadPopupScripts(context);
+  const fileInput = elements.get("recipe-files");
+  fileInput.files = [
+    { name: "meal.png", type: "image/png", size: 1024 },
+    { name: "too-large.jpg", type: "image/jpeg", size: 20 * 1024 * 1024 + 1 },
+    { name: "extra.webp", type: "image/webp", size: 512 },
+  ];
+
+  fileInput.dispatch("change");
+
+  assert.deepEqual(fileInput.files.map((file) => file.name), ["meal.png"]);
+  assert.match(elements.get("file-selection-status").textContent, /over 20 MiB: too-large\.jpg/);
+  assert.match(elements.get("file-selection-status").textContent, /Only one file can be selected/);
 });
 
 test("shows a clear no-dish result without leaving the demo recipe visible", async () => {
@@ -174,6 +276,27 @@ test("shows a clear no-dish result without leaving the demo recipe visible", asy
   }
   assert.deepEqual(elements.get("ingredients").children, []);
   assert.deepEqual(elements.get("instructions").children, []);
+});
+
+test("shows a distinct message when multiple dishes are identified", async () => {
+  const recipeResponse = {
+    ok: true,
+    data: {
+      isDish: false,
+      confidence: 0.98,
+      dishCount: 2,
+      dishName: null,
+      language: "en",
+      recipe: null,
+    },
+  };
+  const { context, elements } = createPopupHarness({ recipeResponse });
+  await loadPopupScripts(context);
+  await vm.runInContext("loadRecipeResponse()", context);
+
+  assert.equal(elements.get("dish-name").textContent, "Multiple dishes found");
+  assert.match(elements.get("recipe-status").textContent, /multiple dishes/);
+  assert.equal(elements.get("recipe-details").hidden, true);
 });
 
 test("shows malformed successful data as an incomplete result", async () => {
@@ -271,54 +394,36 @@ test("exposes accessible like/save controls and core recipe UI", async () => {
   }
 });
 
-test("connects selected text lookup to recipe processing and popup display", async () => {
+test("routes selected text into the in-page lookup card", async () => {
   const onInstalled = createChromeEvent();
   const onClicked = createChromeEvent();
-  const onMessage = createChromeEvent();
-  const storage = {};
-  const openedPopups = [];
-  const recipeResponse = {
-    ok: true,
-    data: {
-      isDish: true,
-      confidence: 0.9,
-      dishName: "Pad Thai",
-      recipe: { ingredients: ["rice noodles"], steps: ["Stir-fry."] },
-    },
-  };
+  const injectedFiles = [];
+  const sentMessages = [];
   const chrome = {
     runtime: {
-      id: "test-extension",
       onInstalled,
-      onMessage,
+      onMessage: createChromeEvent(),
     },
     contextMenus: {
       onClicked,
       removeAll(callback) { callback(); },
       create() {},
     },
-    storage: {
-      local: {
-        async set(values) {
-          Object.assign(storage, values);
-        },
+    scripting: {
+      async executeScript(options) {
+        if (options.files) {
+          injectedFiles.push(options.files);
+        }
+        return [];
       },
     },
-    action: {
-      async openPopup(options) {
-        openedPopups.push(options);
+    tabs: {
+      async sendMessage(tabId, message, options) {
+        sentMessages.push({ tabId, message, options });
       },
     },
   };
-  const context = vm.createContext({
-    chrome,
-    console,
-    URL,
-    geminiClientReady: Promise.resolve(async (text) => {
-      assert.equal(text, "Pad Thai");
-      return recipeResponse;
-    }),
-  });
+  const context = vm.createContext({ chrome, console, URL });
   vm.runInContext(await readProjectFile("background.js"), context, {
     filename: "background.js",
   });
@@ -329,10 +434,56 @@ test("connects selected text lookup to recipe processing and popup display", asy
   );
   await new Promise((resolve) => setImmediate(resolve));
 
-  assert.equal(storage.selectedText, "Pad Thai");
-  assert.equal(storage.selectedImageUrl, "");
-  assert.deepEqual(storage.recipeResponse, recipeResponse);
-  assert.deepEqual(JSON.parse(JSON.stringify(openedPopups)), [{ windowId: 2 }]);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(injectedFiles)),
+    [["render-recipe.js", "shadow-card.js", "lookup.js"]],
+  );
+  assert.equal(sentMessages.length, 1);
+  assert.equal(sentMessages[0].tabId, 7);
+  assert.deepEqual(JSON.parse(JSON.stringify(sentMessages[0].message)), {
+    type: "COOKS_SHOW_LOOKUP",
+    payload: {
+      selectionType: "text",
+      fallbackText: "Pad Thai",
+      fallbackImageDetails: null,
+      imagePermissionGranted: true,
+    },
+  });
+});
+
+test("returns a structured bad-input response for an empty lookup", async () => {
+  const onMessage = createChromeEvent();
+  const chrome = {
+    runtime: {
+      id: "test-extension",
+      onInstalled: createChromeEvent(),
+      onMessage,
+    },
+    contextMenus: {
+      onClicked: createChromeEvent(),
+      removeAll(callback) { callback(); },
+      create() {},
+    },
+  };
+  const context = vm.createContext({ chrome, console, URL });
+  vm.runInContext(await readProjectFile("background.js"), context, {
+    filename: "background.js",
+  });
+  let response;
+
+  onMessage.dispatch(
+    { type: "IDENTIFY_DISH_FROM_TEXT", payload: { text: " " } },
+    { id: "test-extension", tab: { id: 7 } },
+    (value) => { response = value; },
+  );
+
+  assert.deepEqual(JSON.parse(JSON.stringify(response)), {
+    type: "COOKS_ERROR",
+    payload: {
+      ok: false,
+      error: { code: "bad_input", message: "The text selection is empty." },
+    },
+  });
 });
 
 test("uses the active highlighted text for an in-page lookup request", async () => {
@@ -395,4 +546,88 @@ test("uses the active highlighted text for an in-page lookup request", async () 
   });
   assert.equal(card.openOptions.title, "Pad Thai");
   assert.equal(card.updatedData.dishName, "Pad Thai");
+});
+
+test("shows a structured generic error when the service worker disconnects", async () => {
+  const messageListeners = createChromeEvent();
+  const messages = [];
+  const card = {
+    open(_data, options) {
+      this.openOptions = options;
+      this.opened = true;
+    },
+    isOpen() {
+      return this.opened;
+    },
+    showMessage(message) {
+      messages.push(message);
+    },
+  };
+  const context = vm.createContext({
+    chrome: {
+      runtime: {
+        onMessage: messageListeners,
+        async sendMessage() {
+          throw new Error("The service worker stopped before replying.");
+        },
+      },
+    },
+    window: {
+      location: { href: "https://example.test/article" },
+      getSelection: () => ({ toString: () => "sushi" }),
+    },
+    __cooksCard: card,
+  });
+  vm.runInContext(await readProjectFile("lookup.js"), context, {
+    filename: "lookup.js",
+  });
+
+  messageListeners.dispatch({
+    type: "COOKS_SHOW_LOOKUP",
+    payload: { selectionType: "text", fallbackText: "sushi" },
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(card.openOptions.loading, true);
+  assert.deepEqual(messages, [
+    "Cooks could not complete this lookup. Please try again. (client_unavailable)",
+  ]);
+});
+
+test("shows a generic error when a lookup message returns no response", async () => {
+  const messageListeners = createChromeEvent();
+  const messages = [];
+  const card = {
+    open() { this.opened = true; },
+    isOpen() { return this.opened; },
+    showMessage(message) { messages.push(message); },
+  };
+  const context = vm.createContext({
+    chrome: {
+      runtime: {
+        onMessage: messageListeners,
+        async sendMessage() {
+          return undefined;
+        },
+      },
+    },
+    window: {
+      location: { href: "https://example.test/article" },
+      getSelection: () => ({ toString: () => "sushi" }),
+    },
+    __cooksCard: card,
+  });
+  vm.runInContext(await readProjectFile("lookup.js"), context, {
+    filename: "lookup.js",
+  });
+
+  messageListeners.dispatch({
+    type: "COOKS_SHOW_LOOKUP",
+    payload: { selectionType: "text", fallbackText: "sushi" },
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.deepEqual(messages, [
+    "Cooks could not complete this lookup. Please try again. (client_unavailable)",
+  ]);
 });

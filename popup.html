@@ -31,6 +31,7 @@
           class="icon-button save-button"
           id="save-button"
           type="button"
+          disabled
           aria-label="Save this recipe for later"
           aria-pressed="false"
           title="Save recipe"
@@ -47,7 +48,6 @@
             class="file-input"
             id="recipe-files"
             type="file"
-            multiple
             accept=".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif"
             aria-label="Choose files or drop them here; uploading to Gemini will be available in a future update"
           >
@@ -78,6 +78,7 @@
       <h1 id="dish-name">Creamy Tomato Pasta</h1>
 
       <p class="recipe-status" id="recipe-status" role="status" aria-live="polite" hidden></p>
+      <p class="save-status" id="save-status" role="status" aria-live="polite" hidden></p>
       <p class="file-selection-status" id="file-selection-status" role="status" aria-live="polite" hidden></p>
 
       <p class="description" id="dish-description">

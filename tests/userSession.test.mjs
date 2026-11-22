@@ -12,8 +12,8 @@ function createMemoryStorage(initial = {}) {
     async set(values) {
       Object.assign(data, values);
     },
-    async clear() {
-      for (const key of Object.keys(data)) {
+    async remove(keys) {
+      for (const key of keys) {
         delete data[key];
       }
     },
@@ -43,18 +43,21 @@ test("returns anonymous if no active profile session exists", async () => {
   assert.equal(await session.getCurrentUser(), ANONYMOUS_USER);
 });
 
-test("sign-out clears all stored data", async () => {
+test("sign-out clears session data and preserves saved recipes", async () => {
   const storage = createMemoryStorage({
     userProfile: { userId: "user-123" },
     sessionMarker: true,
     selectedText: "Pad Thai",
     recipeResponse: { ok: true },
+    "cooksSavedRecipes:user-123": [{ dishName: "Pad Thai" }],
   });
   const session = createUserSession(storage);
 
   await session.signOut();
 
-  assert.deepEqual(storage.data, {});
+  assert.deepEqual(storage.data, {
+    "cooksSavedRecipes:user-123": [{ dishName: "Pad Thai" }],
+  });
   assert.equal(await session.getCurrentUser(), ANONYMOUS_USER);
 });
 
