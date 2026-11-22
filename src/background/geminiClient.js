@@ -1,7 +1,4 @@
-const MODEL = "gemini-3.1-flash-lite";
-const REQUEST_TIMEOUT_MS = 60_000;
 import {
-  MAX_WEB_IMAGE_BYTES,
   validateImageDimensions,
 } from "../shared/imageValidation.js";
 
@@ -176,14 +173,6 @@ async function readImageBytes(response) {
     return bytes;
   }
 
-  const contentLength = Number(response.headers?.get?.("content-length"));
-  if (Number.isFinite(contentLength) && contentLength > MAX_WEB_IMAGE_BYTES) {
-    const error = new Error("The selected web image exceeds the 15 MiB size limit.");
-    error.code = "image_too_large";
-    throw error;
-  }
-
-  const mimeType = inferMimeType(imageUrl, response);
   const arrayBuffer = typeof response.arrayBuffer === "function"
     ? await response.arrayBuffer()
     : response.buffer
@@ -254,15 +243,6 @@ async function fetchImageData(imageUrl, fetchImpl, signal) {
 
   const bytes = await readImageBytes(response);
   return { mimeType, data: encodeBase64(bytes) };
-  if (bytes.byteLength > MAX_WEB_IMAGE_BYTES) {
-    const error = new Error("The selected web image exceeds the 15 MiB size limit.");
-    error.code = "image_too_large";
-    throw error;
-  }
-
-  const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join("");
-  const data = btoa(binary);
-  return { mimeType, data };
 }
 
 function buildImageRequest({ imageUrl, altText = "", pageUrl = "", imageData }) {
@@ -482,16 +462,6 @@ export function createGeminiClient({
         signal,
       });
     }, requestTimeoutMs);
-    } catch (error) {
-      if (error?.code === "image_too_large") {
-        return failure("image_too_large", error.message);
-      }
-
-      return failure(
-        "network",
-        error?.message || "Could not connect to the recipe service.",
-      );
-    }
   };
 
   const detectDishFromText = async function detectDishFromText(selectedText) {

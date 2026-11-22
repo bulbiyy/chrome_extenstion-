@@ -5,12 +5,9 @@ import {
   DISH_CONFIDENCE_THRESHOLD,
   MAX_IMAGE_BYTES,
 } from "../src/background/geminiClient.js";
-import { MAX_IMAGE_DIMENSION, MAX_IMAGE_PIXELS, validateImageDimensions } from "../src/shared/imageValidation.js";
-import { createGeminiClient, DISH_CONFIDENCE_THRESHOLD } from "../src/background/geminiClient.js";
 import {
   MAX_IMAGE_DIMENSION,
   MAX_IMAGE_PIXELS,
-  MAX_WEB_IMAGE_BYTES,
   validateImageDimensions,
 } from "../src/shared/imageValidation.js";
 
@@ -388,7 +385,6 @@ test("rejects oversized image bytes before calling Gemini", async () => {
 });
 
 test("checks image Content-Length before reading its body", async () => {
-test("rejects oversized web images from Content-Length before reading the body", async () => {
   let imageBodyRead = false;
   const detectDishFromImage = createGeminiClient({
     apiKey: API_KEY,
@@ -401,12 +397,6 @@ test("rejects oversized web images from Content-Length before reading the body",
           : name === "content-length"
             ? String(MAX_IMAGE_BYTES + 1)
             : null,
-      },
-      arrayBuffer: async () => {
-        throw new Error("An oversized response body should not be read.");
-        get: (name) => name === "content-length"
-          ? String(MAX_WEB_IMAGE_BYTES + 1)
-          : "image/jpeg",
       },
       arrayBuffer: async () => {
         imageBodyRead = true;
@@ -423,6 +413,7 @@ test("rejects oversized web images from Content-Length before reading the body",
 
   assert.equal(result.ok, false);
   assertStructuredFailure(result, "image_too_large");
+  assert.equal(imageBodyRead, false);
 });
 
 test("returns a structured image-fetch error for an inaccessible host", async () => {
@@ -442,12 +433,6 @@ test("returns a structured image-fetch error for an inaccessible host", async ()
 });
 
 test("rejects images with unknown MIME types rather than assuming JPEG", async () => {
-  assert.equal(result.error.code, "image_too_large");
-  assert.equal(imageBodyRead, false);
-});
-
-test("rejects oversized web image bytes when Content-Length is unavailable", async () => {
-  const oversizedImage = new Uint8Array(MAX_WEB_IMAGE_BYTES + 1);
   const detectDishFromImage = createGeminiClient({
     apiKey: API_KEY,
     fetchImpl: async () => ({
@@ -559,7 +544,7 @@ test("uses one abortable deadline across image download and Gemini request", asy
   assert.equal(signals[0], signals[1]);
   assert.equal(signals[0].aborted, true);
   assert.equal(result.ok, false);
-  assert.equal(result.error.code, "image_too_large");
+  assert.equal(result.error.code, "timeout");
 });
 
 test("handles selected text that is not a dish", async () => {
