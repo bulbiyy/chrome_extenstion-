@@ -109,6 +109,22 @@ a {
   gap: 6px;
   margin-left: auto;
 }
+
+.favorites-link {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 3px;
+  border: 0;
+  background: transparent;
+  color: var(--accent-dark);
+  font-size: 10px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.favorites-link:hover { text-decoration: underline; }
+.favorites-link span { color: var(--muted); font-size: 9px; }
  
 .icon-button {
   display: grid;
@@ -138,13 +154,6 @@ a {
  
 .like-button[aria-pressed="true"] {
   background: #fff0eb;
-}
- 
-/* Saved state */
- 
-.save-button[aria-pressed="true"] {
-  background: #edf1e5;
-  color: #536343;
 }
  
 /* Recipe image */
@@ -216,7 +225,7 @@ h1 {
   line-height: 1.4;
 }
 
-.save-button:disabled {
+.like-button:disabled {
   cursor: not-allowed;
   opacity: 0.5;
 }
@@ -297,6 +306,46 @@ h1 {
   font-size: 11px;
   line-height: 1.5;
 }
+
+.view-nav { display:flex; gap:7px; padding:0 14px 9px; }
+.nav-button { border:0; border-radius:999px; background:#f4efe5; color:#6b675c; padding:6px 11px; font-size:10px; font-weight:700; cursor:pointer; }
+.nav-button.is-active,.nav-button:hover { background:#fff0e8; color:var(--accent-dark); }
+.nav-button span { display:inline-grid; place-items:center; min-width:16px; height:16px; margin-left:3px; border-radius:50%; background:white; }
+.auth-card,.panel-card { width:360px; min-height:100vh; padding:20px; background:var(--paper); }
+.auth-brand { display:flex; align-items:center; gap:8px; margin-bottom:24px; }
+.auth-card h1,.panel-header h1 { margin:0; font-size:25px; }
+.auth-copy,.panel-intro,.privacy-note { color:var(--muted); font-size:12px; line-height:1.5; }
+.auth-card form,.account-form { display:grid; gap:12px; margin-top:19px; }
+.auth-card label,.account-form label { display:grid; gap:6px; color:#525047; font-size:11px; font-weight:700; }
+.auth-card input,.account-form input { width:100%; height:38px; padding:0 10px; border:1px solid var(--line); border-radius:9px; background:white; color:var(--ink); font:inherit; font-size:12px; }
+.auth-card input:focus,.account-form input:focus { outline:2px solid #edb6a8; border-color:var(--accent); }
+.primary-button,.secondary-button,.danger-button { min-height:36px; border:0; border-radius:9px; font-size:11px; font-weight:750; cursor:pointer; }
+.primary-button { background:var(--accent); color:white; }
+.primary-button:hover { background:var(--accent-dark); }
+.secondary-button { background:#f4efe5; color:#49473f; }
+.danger-button { background:#fff0eb; color:#a83d2a; }
+.text-button { display:block; margin:13px auto 0; padding:4px; border:0; background:none; color:var(--accent-dark); font-size:11px; font-weight:700; cursor:pointer; }
+.privacy-note { margin-top:25px; font-size:10px; text-align:center; }
+.auth-error { margin:0; color:#a83d2a; font-size:11px; line-height:1.4; }
+.panel-card { padding:14px; }
+.panel-header { display:flex; align-items:center; gap:10px; min-height:38px; }
+.panel-header h1 { flex:1; font-size:21px; }
+.back-button { width:31px; height:31px; border:0; border-radius:50%; background:#f4efe5; color:var(--ink); font-size:19px; cursor:pointer; }
+.panel-intro { margin:7px 0 13px; }
+.favorites-list { display:grid; gap:8px; }
+.favorite-item { display:grid; grid-template-columns:58px 1fr 34px; align-items:center; gap:10px; min-height:68px; padding:6px; border:1px solid var(--line); border-radius:12px; background:white; }
+.favorite-item img { width:58px; height:54px; border-radius:8px; object-fit:cover; background:#eee0c9; }
+.favorite-item strong { font-family:Georgia,serif; font-size:13px; }
+.favorite-open { width:30px; height:30px; border:0; border-radius:50%; background:#fff0e8; color:var(--accent-dark); font-size:17px; cursor:pointer; }
+.empty-state { padding:22px 10px; color:var(--muted); font-size:12px; text-align:center; }
+.account-profile { display:flex; align-items:center; gap:12px; margin:18px 0; padding:13px; border-radius:12px; background:#f7f2e8; }
+.profile-avatar { display:grid; place-items:center; width:40px; height:40px; border-radius:50%; background:white; color:var(--accent); font-size:20px; }
+.account-profile div { display:grid; gap:4px; min-width:0; }
+.account-profile strong { font-size:12px; }
+.account-profile span:not(.profile-avatar) { overflow:hidden; color:var(--muted); font-size:10px; text-overflow:ellipsis; }
+.account-form { padding:13px; border:1px solid var(--line); border-radius:12px; }
+.account-form h2 { margin:0; font-family:Georgia,serif; font-size:16px; }
+.full-button { width:100%; margin-top:9px; }
  
 /* Recipe details */
  

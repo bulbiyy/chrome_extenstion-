@@ -56,7 +56,7 @@ class FakeDataTransfer {
   }
 }
 
-function createPopupHarness(storageData = {}) {
+function createPopupHarness(storageData = {}, protocol = "https:") {
   const ids = [
     "dish-name",
     "recipe-status",
@@ -75,7 +75,14 @@ function createPopupHarness(storageData = {}) {
     "references-block",
     "footer-note",
     "dish-image",
-    "save-button",
+    "favorite-button",
+    "show-favorites",
+    "favorites-view",
+    "recipe-view",
+    "account-view",
+    "favorites-count",
+    "favorites-list",
+    "favorites-empty",
     "save-status",
     "recipe-files",
     "file-selection-status",
@@ -109,7 +116,7 @@ function createPopupHarness(storageData = {}) {
   const context = vm.createContext({
     chrome,
     document,
-    location: { protocol: "https:" },
+    location: { protocol },
     console: { error() {}, log() {} },
     CooksUserSession: {
       async getCurrentUser() {
@@ -171,7 +178,7 @@ test("displays the recipe response in the popup", async () => {
     ["Soak the noodles.", "Stir-fry and serve."],
   );
   assert.equal(elements.get("recipe-status").hidden, true);
-  assert.equal(elements.get("save-button").disabled, false);
+  assert.equal(elements.get("favorite-button").disabled, false);
 });
 
 test("saves a valid dish for the active user and toggles it off", async () => {
@@ -196,8 +203,8 @@ test("saves a valid dish for the active user and toggles it off", async () => {
   const savedKey = "cooksSavedRecipes:user-123";
   assert.equal(storageData[savedKey].length, 1);
   assert.equal(storageData[savedKey][0].dishName, "Pad Thai");
-  assert.equal(elements.get("save-button").attributes.get("aria-pressed"), "true");
-  assert.match(elements.get("save-status").textContent, /saved to your account/);
+  assert.equal(elements.get("favorite-button").attributes.get("aria-pressed"), "true");
+  assert.match(elements.get("save-status").textContent, /added to your favorites/);
 
   storageData.recipeResponse = {
     ok: true,
@@ -222,7 +229,22 @@ test("saves a valid dish for the active user and toggles it off", async () => {
     Array.from(storageData[savedKey][0].recipe.steps),
     ["Boil the noodles until tender.", "Whisk the sauce and toss with noodles."],
   );
-  assert.equal(elements.get("save-button").attributes.get("aria-pressed"), "false");
+  assert.equal(elements.get("favorite-button").attributes.get("aria-pressed"), "false");
+});
+
+test("the preview heart saves the displayed recipe and Favorites opens the saved list", async () => {
+  const { context, elements, storageData } = createPopupHarness({}, "chrome-extension:");
+  await loadPopupScripts(context);
+  await vm.runInContext("updateSaveButtonState()", context);
+
+  assert.equal(elements.get("favorite-button").disabled, false);
+  await vm.runInContext("toggleSavedRecipe()", context);
+  assert.equal(storageData["cooksSavedRecipes:user-123"][0].dishName, "Creamy Tomato Pasta");
+  assert.equal(elements.get("favorite-button").attributes.get("aria-pressed"), "true");
+
+  await vm.runInContext("document.getElementById('show-favorites').listeners.get('click')[0]()", context);
+  assert.equal(elements.get("favorites-view").hidden, false);
+  assert.equal(elements.get("favorites-count").textContent, "1");
 });
 
 test("rejects uploaded images over 20 MiB and keeps only one eligible image", async () => {
@@ -365,7 +387,7 @@ test("uses the bundled image when no selected image is available", async () => {
   );
 });
 
-test("exposes accessible like/save controls and core recipe UI", async () => {
+test("exposes an accessible favorite control and core recipe UI", async () => {
   const html = await readProjectFile("popup.html");
   const getButtonAttributes = (id) => {
     const match = html.match(new RegExp(`<button\\b(?=[^>]*\\bid="${id}")[^>]*>`, "s"));
@@ -373,15 +395,11 @@ test("exposes accessible like/save controls and core recipe UI", async () => {
     return match[0];
   };
 
-  for (const [id, label] of [
-    ["like-button", "Like this recipe"],
-    ["save-button", "Save this recipe for later"],
-  ]) {
-    const button = getButtonAttributes(id);
-    assert.match(button, /type="button"/);
-    assert.match(button, new RegExp(`aria-label="${label}"`));
-    assert.match(button, /aria-pressed="false"/);
-  }
+  const button = getButtonAttributes("favorite-button");
+  assert.match(button, /type="button"/);
+  assert.match(button, /aria-label="Add recipe to favorites"/);
+  assert.match(button, /aria-pressed="false"/);
+  assert.match(html, /id="show-favorites"[^>]*>\s*Favorites/);
 
   for (const id of [
     "dish-name",

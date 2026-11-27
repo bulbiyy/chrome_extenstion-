@@ -54,22 +54,21 @@ the classification, confidence, dish count, language code, dish name, and recipe
 The popup and in-page card show a clear no-dish or unavailable-result message
 and hide recipe details for non-dish, malformed, or failed responses.
 
-The popup's Save button stores valid generated dishes in `chrome.storage.local`
+The popup's heart button stores valid generated dishes in `chrome.storage.local`
 under a user-specific `cooksSavedRecipes:<userId>` key. Saved entries include
-the dish result and a `savedAt` timestamp; recipes remain on this device and
-are not synchronized to a server. Same-named recipes are treated as the same
-saved entry only when their combined instruction character counts also match,
-so variations with different instruction lengths can be saved separately.
-Signing out clears session and transient selection data while preserving saved
-recipe collections.
+the dish result, its displayed image, and a `savedAt` timestamp. The Favorites
+view shows a thumbnail and dish name; its arrow opens the saved recipe details.
+Recipes remain on this device and are not synchronized to a server.
 
-The popup exposes `CooksUserSession.signIn(profile)`,
-`CooksUserSession.getCurrentUser()`, and `CooksUserSession.signOut()` for the
-application layer. A profile must include a non-empty `userId`. Sign-in stores
-the profile and a session marker in `chrome.storage.local`; the current-user
-function returns the profile's `userId` only for an active session, otherwise
-`"anonymous"`. Sign-out clears `chrome.storage.local`, including transient
-selection and recipe data.
+On first use, create a local account with an email, username, and password.
+The account page supports changing the password, switching accounts, signing
+out, and deleting the account and its saved recipes. Passwords are stored as
+salted PBKDF2 hashes in `chrome.storage.local`; an active session persists on
+this device so reopening the extension does not require another sign-in. This
+local account flow does not verify email addresses or authenticate against a
+server. `CooksUserSession.signIn(profile)`,
+`CooksUserSession.getCurrentUser()`, and `CooksUserSession.signOut()` manage the
+active profile and transient selection data.
 
 Run the full automated test suite without calling the API:
 

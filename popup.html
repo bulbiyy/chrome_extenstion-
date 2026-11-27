@@ -8,7 +8,22 @@
 </head>
 
 <body>
-  <main class="recipe-card" aria-labelledby="dish-name">
+  <section class="auth-card" id="auth-view" aria-labelledby="auth-heading" hidden>
+    <div class="auth-brand"><span class="brand-mark" aria-hidden="true">c.</span><span class="brand-name">Cooks</span></div>
+    <h1 id="auth-heading">Welcome to Cooks</h1>
+    <p class="auth-copy">Sign in or create an account to save your favorite recipes.</p>
+    <form id="auth-form">
+      <label>Email<input id="auth-email" type="email" autocomplete="email" required></label>
+      <label id="username-field" hidden>Username<input id="auth-username" type="text" autocomplete="username"></label>
+      <label>Password<input id="auth-password" type="password" autocomplete="current-password" minlength="8" required></label>
+      <p class="auth-error" id="auth-error" role="alert" hidden></p>
+      <button class="primary-button" id="auth-submit" type="submit">Sign in</button>
+    </form>
+    <button class="text-button" id="auth-mode-toggle" type="button">Create an account</button>
+    <p class="privacy-note">Your account and recipes are stored on this device.</p>
+  </section>
+
+  <main class="recipe-card" id="recipe-view" aria-labelledby="dish-name" hidden>
 
     <!-- Header -->
     <div class="topline">
@@ -17,25 +32,26 @@
 
       <div class="header-actions">
 
-        <!-- Recipe actions -->
+        <button class="favorites-link" id="show-favorites" type="button" aria-label="Open favorites">
+          Favorites <span id="favorites-count">0</span>
+        </button>
         <button
           class="icon-button like-button"
-          id="like-button"
+          id="favorite-button"
           type="button"
-          aria-label="Like this recipe"
+          aria-label="Add recipe to favorites"
           aria-pressed="false"
-          title="Like recipe"
+          title="Add to favorites"
+          disabled
         >♡</button>
 
         <button
-          class="icon-button save-button"
-          id="save-button"
+          class="icon-button account-button"
+          id="account-button"
           type="button"
-          disabled
-          aria-label="Save this recipe for later"
-          aria-pressed="false"
-          title="Save recipe"
-        >♧</button>
+          aria-label="Account"
+          title="Account"
+        >♙</button>
 
         <label
           class="file-upload-button"
@@ -149,6 +165,23 @@
 
     </section>
   </main>
+
+  <section class="panel-card" id="favorites-view" aria-labelledby="favorites-heading" hidden>
+    <header class="panel-header"><button class="back-button" id="back-from-favorites" type="button" aria-label="Back to recipe">←</button><h1 id="favorites-heading">Your favorites</h1><button class="icon-button" id="favorites-account-button" type="button" aria-label="Account">♙</button></header>
+    <p class="panel-intro">Recipes you’ve saved on this device.</p>
+    <div class="favorites-list" id="favorites-list"></div>
+    <p class="empty-state" id="favorites-empty">No favorites yet. Like a recipe to save it here.</p>
+  </section>
+
+  <section class="panel-card" id="account-view" aria-labelledby="account-heading" hidden>
+    <header class="panel-header"><button class="back-button" id="back-from-account" type="button" aria-label="Back to recipe">←</button><h1 id="account-heading">Your account</h1></header>
+    <div class="account-profile"><span class="profile-avatar" aria-hidden="true">♙</span><div><strong id="account-username"></strong><span id="account-email"></span></div></div>
+    <p class="auth-error" id="account-error" role="alert" hidden></p>
+    <form id="change-password-form" class="account-form"><h2>Change password</h2><label>Current password<input id="current-password" type="password" autocomplete="current-password" required></label><label>New password<input id="new-password" type="password" autocomplete="new-password" minlength="8" required></label><button class="secondary-button" type="submit">Update password</button></form>
+    <button class="secondary-button full-button" id="switch-account" type="button">Change account</button>
+    <button class="secondary-button full-button" id="sign-out" type="button">Sign out</button>
+    <button class="danger-button full-button" id="delete-account" type="button">Delete account</button>
+  </section>
 
   <!-- Popup scripts -->
   <script src="render-recipe.js"></script>

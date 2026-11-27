@@ -67,11 +67,11 @@
       }
       return {
         name: data.dishName,
-        category: "RECIPE",
-        description: "Recipe generated from your selected text.",
-        cookTime: "",
-        servings: "",
-        difficulty: "",
+        category: data.category || "RECIPE",
+        description: data.description || "Recipe generated from your selected text.",
+        cookTime: data.cookTime || "",
+        servings: data.servings || "",
+        difficulty: data.difficulty || "",
         ingredients: data.recipe.ingredients,
         instructions: data.recipe.steps,
         youtubeSearchUrl: `https://www.youtube.com/results?search_query=${encodeURIComponent(`${data.dishName} recipe`)}`,
